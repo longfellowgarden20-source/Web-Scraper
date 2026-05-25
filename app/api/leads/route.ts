@@ -1,0 +1,43 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const status = searchParams.get('status')
+  const source = searchParams.get('source')
+  const search = searchParams.get('search')
+
+  let query = supabaseAdmin
+    .from('leads')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (status && status !== 'all') query = query.eq('status', status)
+  if (source && source !== 'all') query = query.eq('source', source)
+  if (search) query = query.ilike('business_name', `%${search}%`)
+
+  const { data, error } = await query
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
+export async function PATCH(req: NextRequest) {
+  const body = await req.json()
+  const { id, ...updates } = body
+
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  const allowed = ['status', 'notes', 'outreach_draft']
+  const filtered = Object.fromEntries(Object.entries(updates).filter(([k]) => allowed.includes(k)))
+
+  const { data, error } = await supabaseAdmin
+    .from('leads')
+    .update(filtered)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
