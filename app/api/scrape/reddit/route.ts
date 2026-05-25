@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
+export const dynamic = 'force-dynamic'
+
 const SUBREDDITS = ['entrepreneur', 'smallbusiness', 'Etsy', 'ecommerce']
 const KEYWORDS = ['need a website', 'looking for a developer', 'website help', 'build me a site', 'need web design', 'looking for web developer', 'need a web designer', 'hire a developer', 'need someone to build']
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
+export const dynamic = 'force-dynamic'
+
 const MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY!
 
 type PlaceResult = {
