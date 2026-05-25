@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Map, MessageSquare, LogOut, Globe, Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import { useAuth } from '@/app/context/AuthContext'
 
 const links = [
   { href: '/dashboard', label: 'Leads', icon: LayoutDashboard },
@@ -15,11 +14,10 @@ const links = [
 export function AdminNav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const { signOut } = useAuth()
   const router = useRouter()
 
   const handleSignOut = async () => {
-    await signOut()
+    await fetch('/api/auth', { method: 'DELETE' })
     router.push('/sign-in')
   }
 
