@@ -12,6 +12,14 @@ type PlaceResult = {
   formatted_phone_number?: string
   website?: string
   types?: string[]
+  rating?: number
+  user_ratings_total?: number
+}
+
+type Enrichment = {
+  email: string | null
+  instagram: string | null
+  facebook: string | null
 }
 
 async function searchPlaces(query: string): Promise<string[]> {
@@ -23,7 +31,7 @@ async function searchPlaces(query: string): Promise<string[]> {
 }
 
 async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
-  const fields = 'name,website,formatted_phone_number,place_id,types,formatted_address'
+  const fields = 'name,website,formatted_phone_number,place_id,types,formatted_address,rating,user_ratings_total'
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${MAPS_API_KEY}`
   const res = await fetch(url)
   const data = await res.json()
@@ -34,7 +42,6 @@ async function scoreWebPresence(website: string | undefined): Promise<number> {
   if (!website) return 10
 
   let score = 3
-
   if (!website.startsWith('https://')) score += 2
 
   try {
@@ -46,7 +53,6 @@ async function scoreWebPresence(website: string | undefined): Promise<number> {
       redirect: 'follow',
     })
     clearTimeout(timeout)
-
     if (!res.ok) score += 3
     const ct = res.headers.get('content-type') ?? ''
     if (!ct.includes('text/html')) score += 2
@@ -55,6 +61,70 @@ async function scoreWebPresence(website: string | undefined): Promise<number> {
   }
 
   return Math.min(score, 10)
+}
+
+async function enrichFromWebsite(website: string | undefined): Promise<Enrichment> {
+  const result: Enrichment = { email: null, instagram: null, facebook: null }
+  if (!website) return result
+
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
+
+    // Try contact page first, fall back to homepage
+    const urls = [
+      website.replace(/\/$/, '') + '/contact',
+      website.replace(/\/$/, '') + '/contact-us',
+      website,
+    ]
+
+    let html = ''
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FastWebsitesBot/1.0)' },
+        })
+        if (res.ok) {
+          html = await res.text()
+          if (html.length > 500) break
+        }
+      } catch {
+        // try next url
+      }
+    }
+    clearTimeout(timeout)
+
+    if (!html) return result
+
+    // Extract email
+    const emailMatch = html.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g)
+    if (emailMatch) {
+      const filtered = emailMatch.filter(e =>
+        !e.includes('example.com') &&
+        !e.includes('sentry') &&
+        !e.includes('wix') &&
+        !e.includes('wordpress') &&
+        !e.endsWith('.png') &&
+        !e.endsWith('.jpg')
+      )
+      if (filtered.length) result.email = filtered[0]
+    }
+
+    // Extract Instagram
+    const igMatch = html.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i)
+    if (igMatch) result.instagram = `https://instagram.com/${igMatch[1]}`
+
+    // Extract Facebook
+    const fbMatch = html.match(/facebook\.com\/([a-zA-Z0-9_.]+)/i)
+    if (fbMatch && !fbMatch[1].startsWith('sharer') && !fbMatch[1].startsWith('share')) {
+      result.facebook = `https://facebook.com/${fbMatch[1]}`
+    }
+  } catch {
+    // enrichment failed — return what we have
+  }
+
+  return result
 }
 
 function extractCity(address: string | undefined): string {
@@ -93,6 +163,8 @@ export async function POST(req: NextRequest) {
       const score = await scoreWebPresence(place.website)
       if (score < 4) continue
 
+      const enrichment = await enrichFromWebsite(place.website)
+
       const lead = {
         source: 'google_maps',
         business_name: place.name,
@@ -103,6 +175,11 @@ export async function POST(req: NextRequest) {
         score,
         status: 'new',
         maps_place_id: place.place_id,
+        google_rating: place.rating ?? null,
+        google_review_count: place.user_ratings_total ?? null,
+        email: enrichment.email,
+        instagram: enrichment.instagram,
+        facebook: enrichment.facebook,
       }
 
       const { error } = await supabaseAdmin

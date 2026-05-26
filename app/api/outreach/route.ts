@@ -20,6 +20,10 @@ export async function POST(req: NextRequest) {
     ? `They posted on Reddit asking for web help.`
     : `Found via Google Maps search.`
 
+  const reviewInfo = lead.google_review_count
+    ? `They have ${lead.google_review_count} Google reviews with a ${lead.google_rating} star rating.`
+    : ''
+
   const prompt = `You are writing a cold outreach message for a web design agency called Fast Websites (fastwebsitesagency.com).
 
 Business details:
@@ -28,6 +32,7 @@ Business details:
 - Category: ${lead.category ?? 'local business'}
 - ${websiteInfo}
 - ${sourceInfo}
+${reviewInfo ? `- ${reviewInfo}` : ''}
 
 Write a short, human-sounding cold outreach message. 3-5 sentences max. Be direct and specific about why you're reaching out. Reference their business type and web situation. End with a soft call to action. Do not use generic filler phrases. Do not mention the score number. Sign off as "Fast Websites team".`
 

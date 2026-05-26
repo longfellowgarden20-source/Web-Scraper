@@ -18,6 +18,11 @@ type Lead = {
   outreach_draft: string | null
   notes: string | null
   reddit_url: string | null
+  email: string | null
+  instagram: string | null
+  facebook: string | null
+  google_rating: number | null
+  google_review_count: number | null
 }
 
 const card = 'bg-white/5 border border-white/10 rounded-2xl'
@@ -161,6 +166,34 @@ export default function LeadDetailClient({ id }: { id: string }) {
           <div>
             <p className="text-xs text-slate-500 mb-1">Phone</p>
             <p className="text-sm text-white">{lead.phone}</p>
+          </div>
+        )}
+        {lead.email && (
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Email</p>
+            <a href={`mailto:${lead.email}`} className="text-sm text-[#0ea5e9] hover:underline">{lead.email}</a>
+          </div>
+        )}
+        {lead.google_review_count != null && (
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Google Reviews</p>
+            <p className="text-sm text-white">⭐ {lead.google_rating?.toFixed(1)} <span className="text-slate-500">({lead.google_review_count} reviews)</span></p>
+          </div>
+        )}
+        {lead.instagram && (
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Instagram</p>
+            <a href={lead.instagram} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0ea5e9] hover:underline flex items-center gap-1">
+              {lead.instagram.replace('https://instagram.com/', '@')} <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
+        {lead.facebook && (
+          <div>
+            <p className="text-xs text-slate-500 mb-1">Facebook</p>
+            <a href={lead.facebook} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0ea5e9] hover:underline flex items-center gap-1">
+              View page <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
         )}
         {lead.reddit_url && (

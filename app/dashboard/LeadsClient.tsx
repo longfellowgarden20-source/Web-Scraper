@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -19,6 +19,11 @@ type Lead = {
   notes: string | null
   reddit_url: string | null
   maps_place_id: string | null
+  email: string | null
+  instagram: string | null
+  facebook: string | null
+  google_rating: number | null
+  google_review_count: number | null
 }
 
 type SortKey = 'business_name' | 'score' | 'city' | 'created_at' | 'status'
@@ -167,10 +172,10 @@ export default function LeadsClient() {
                 <tr className="border-b border-white/10">
                   <th className="px-4 py-3 text-left"><SortBtn k="business_name">Business</SortBtn></th>
                   <th className="px-4 py-3 text-left"><SortBtn k="city">City</SortBtn></th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Source</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Reviews</th>
                   <th className="px-4 py-3 text-left"><SortBtn k="score">Score</SortBtn></th>
                   <th className="px-4 py-3 text-left"><SortBtn k="status">Status</SortBtn></th>
-                  <th className="px-4 py-3 text-left"><SortBtn k="created_at">Added</SortBtn></th>
                   <th className="px-4 py-3 w-10"></th>
                 </tr>
               </thead>
@@ -189,9 +194,31 @@ export default function LeadsClient() {
                     </td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{lead.city || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-medium ${lead.source === 'google_maps' ? 'text-purple-400' : 'text-yellow-400'}`}>
-                        {lead.source === 'google_maps' ? 'Maps' : 'Reddit'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {lead.email && (
+                          <a href={`mailto:${lead.email}`} title={lead.email} className="text-[#0ea5e9] hover:text-white" style={{ transition: 'color 0.15s' }}>
+                            <Mail className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        {lead.instagram && (
+                          <a href={lead.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-pink-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>IG</a>
+                        )}
+                        {lead.facebook && (
+                          <a href={lead.facebook} target="_blank" rel="noopener noreferrer" title="Facebook" className="text-blue-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>FB</a>
+                        )}
+                        {!lead.email && !lead.instagram && !lead.facebook && (
+                          <span className="text-slate-600 text-xs">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {lead.google_review_count != null ? (
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-yellow-400" />
+                          <span className="text-xs text-white tabular-nums">{lead.google_rating?.toFixed(1)}</span>
+                          <span className="text-xs text-slate-500">({lead.google_review_count})</span>
+                        </div>
+                      ) : <span className="text-slate-600 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3">{scoreBadge(lead.score)}</td>
                     <td className="px-4 py-3">
