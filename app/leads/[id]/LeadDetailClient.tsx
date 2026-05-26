@@ -92,9 +92,12 @@ export default function LeadDetailClient({ id }: { id: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to generate')
-      setLead(prev => prev ? { ...prev, outreach_draft: data.draft } : prev)
+      const text = await res.text()
+      if (!text) throw new Error(`Server error ${res.status} — empty response`)
+      let data: { draft?: string; error?: string }
+      try { data = JSON.parse(text) } catch { throw new Error(`Bad response: ${text.slice(0, 100)}`) }
+      if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
+      setLead(prev => prev ? { ...prev, outreach_draft: data.draft ?? null } : prev)
     } catch (e: unknown) {
       setDraftError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
