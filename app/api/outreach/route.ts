@@ -49,10 +49,21 @@ Write a short, human-sounding cold outreach message. 3-5 sentences max. Be direc
     }),
   })
 
-  const data = await res.json()
-  const draft = data.choices?.[0]?.message?.content?.trim()
+  const text = await res.text()
 
-  if (!draft) return NextResponse.json({ error: 'Failed to generate draft' }, { status: 500 })
+  if (!res.ok) {
+    return NextResponse.json({ error: `Groq error ${res.status}: ${text}` }, { status: 500 })
+  }
+
+  let data: { choices?: { message?: { content?: string } }[] }
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return NextResponse.json({ error: `Invalid JSON from Groq: ${text.slice(0, 200)}` }, { status: 500 })
+  }
+
+  const draft = data.choices?.[0]?.message?.content?.trim()
+  if (!draft) return NextResponse.json({ error: 'Empty response from Groq' }, { status: 500 })
 
   await supabaseAdmin.from('leads').update({ outreach_draft: draft }).eq('id', id)
 
