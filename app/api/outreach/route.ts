@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -34,13 +31,23 @@ Business details:
 
 Write a short, human-sounding cold outreach message. 3-5 sentences max. Be direct and specific about why you're reaching out. Reference their business type and web situation. End with a soft call to action. Do not use generic filler phrases. Do not mention the score number. Sign off as "Fast Websites team".`
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 300,
-    messages: [{ role: 'user', content: prompt }],
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }],
+    }),
   })
 
-  const draft = (message.content[0] as { type: string; text: string }).text.trim()
+  const data = await res.json()
+  const draft = data.choices?.[0]?.message?.content?.trim()
+
+  if (!draft) return NextResponse.json({ error: 'Failed to generate draft' }, { status: 500 })
 
   await supabaseAdmin.from('leads').update({ outreach_draft: draft }).eq('id', id)
 
