@@ -52,7 +52,11 @@ export default function LeadDetailClient({ id }: { id: string }) {
 
   useEffect(() => {
     fetch(`/api/leads/${id}`)
-      .then(r => r.json())
+      .then(async r => {
+        const text = await r.text()
+        if (!text) throw new Error('Empty response')
+        return JSON.parse(text)
+      })
       .then(data => {
         setLead(data)
         setNotes(data.notes ?? '')
@@ -68,8 +72,10 @@ export default function LeadDetailClient({ id }: { id: string }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...updates }),
     })
-    const data = await res.json()
-    setLead(data)
+    const text = await res.text()
+    if (text) {
+      try { setLead(JSON.parse(text)) } catch { /* ignore */ }
+    }
   }
 
   const handleStatusChange = async (newStatus: string) => {
