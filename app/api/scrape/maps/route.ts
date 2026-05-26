@@ -41,23 +41,49 @@ async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
 async function scoreWebPresence(website: string | undefined): Promise<number> {
   if (!website) return 10
 
-  let score = 3
+  let score = 2
+
+  // No HTTPS
   if (!website.startsWith('https://')) score += 2
 
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
+    const timeout = setTimeout(() => controller.abort(), 7000)
+
+    const start = Date.now()
     const res = await fetch(website, {
-      method: 'HEAD',
       signal: controller.signal,
       redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FastWebsitesBot/1.0)' },
     })
+    const loadTime = Date.now() - start
     clearTimeout(timeout)
-    if (!res.ok) score += 3
-    const ct = res.headers.get('content-type') ?? ''
-    if (!ct.includes('text/html')) score += 2
+
+    // Site down or error
+    if (!res.ok) { score += 4 }
+
+    const html = await res.text()
+
+    // Slow load (over 4 seconds)
+    if (loadTime > 4000) score += 1
+
+    // No viewport meta = not mobile friendly
+    if (!html.includes('viewport')) score += 2
+
+    // Outdated/cheap CMS detection
+    if (html.includes('wp-content') || html.includes('wp-includes')) score += 1 // WordPress (not bad, but common)
+    if (html.includes('wix.com') || html.includes('wixstatic')) score += 2
+    if (html.includes('squarespace') || html.includes('squarespace.com')) score += 1
+    if (html.includes('weebly.com') || html.includes('weeblysite')) score += 2
+    if (html.includes('godaddysites') || html.includes('godaddy')) score += 2
+    if (html.includes('vistasite') || html.includes('vista.com')) score += 2
+
+    // No contact info visible
+    if (!html.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) && !html.includes('contact')) score += 1
+
   } catch {
-    score += 4
+    // Site unreachable
+    score += 5
   }
 
   return Math.min(score, 10)
@@ -127,6 +153,17 @@ async function enrichFromWebsite(website: string | undefined): Promise<Enrichmen
   return result
 }
 
+// Higher reviews + worse website = better lead (more customers to lose)
+function calcPriority(score: number, reviewCount: number | undefined): number {
+  const reviewBoost = reviewCount
+    ? reviewCount >= 200 ? 3
+    : reviewCount >= 50 ? 2
+    : reviewCount >= 10 ? 1
+    : 0
+    : 0
+  return Math.min(score + reviewBoost, 10)
+}
+
 function extractCity(address: string | undefined): string {
   if (!address) return ''
   const parts = address.split(',')
@@ -164,6 +201,7 @@ export async function POST(req: NextRequest) {
       if (score < 4) continue
 
       const enrichment = await enrichFromWebsite(place.website)
+      const priority = calcPriority(score, place.user_ratings_total)
 
       const lead = {
         source: 'google_maps',
@@ -172,7 +210,7 @@ export async function POST(req: NextRequest) {
         category: extractCategory(place.types),
         website: place.website ?? null,
         phone: place.formatted_phone_number ?? null,
-        score,
+        score: priority,
         status: 'new',
         maps_place_id: place.place_id,
         google_rating: place.rating ?? null,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star, Download } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -61,6 +61,8 @@ export default function LeadsClient() {
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkUpdating, setBulkUpdating] = useState(false)
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -101,6 +103,33 @@ export default function LeadsClient() {
     setUpdatingId(null)
   }
 
+  const bulkUpdateStatus = async (status: string) => {
+    if (!selected.size) return
+    setBulkUpdating(true)
+    await Promise.all([...selected].map(id =>
+      fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      })
+    ))
+    setLeads(l => l.map(x => selected.has(x.id) ? { ...x, status: status as Lead['status'] } : x))
+    setSelected(new Set())
+    setBulkUpdating(false)
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelected(prev => prev.size === sorted.length ? new Set() : new Set(sorted.map(l => l.id)))
+  }
+
   const SortBtn = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
     <button onClick={() => setSort(k)} className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-white" style={{ transition: 'color 0.15s' }}>
       {children}
@@ -120,9 +149,14 @@ export default function LeadsClient() {
           <h1 className="text-2xl font-bold text-white tracking-tight">Leads</h1>
           <p className="text-sm text-slate-500 mt-0.5">{leads.length} total · {newCount} new</p>
         </div>
-        <button onClick={fetchLeads} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }}>
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <a href="/api/leads/export" download className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }} title="Export CSV">
+            <Download className="w-4 h-4" />
+          </a>
+          <button onClick={fetchLeads} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }}>
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -159,6 +193,23 @@ export default function LeadsClient() {
         </select>
       </div>
 
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 rounded-xl">
+          <span className="text-sm text-[#0ea5e9] font-semibold">{selected.size} selected</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-slate-400">Mark as:</span>
+            {['contacted', 'replied', 'converted', 'passed'].map(s => (
+              <button key={s} onClick={() => bulkUpdateStatus(s)} disabled={bulkUpdating}
+                className="px-2.5 py-1 text-xs font-semibold border border-white/10 rounded-lg text-slate-300 hover:bg-white/8 disabled:opacity-40 capitalize"
+                style={{ transition: 'background 0.15s' }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className={`${card} overflow-hidden`}>
         {loading ? (
@@ -170,6 +221,9 @@ export default function LeadsClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
+                  <th className="px-4 py-3 w-8">
+                    <input type="checkbox" checked={selected.size === sorted.length && sorted.length > 0} onChange={toggleSelectAll} className="accent-[#0ea5e9] cursor-pointer" />
+                  </th>
                   <th className="px-4 py-3 text-left"><SortBtn k="business_name">Business</SortBtn></th>
                   <th className="px-4 py-3 text-left"><SortBtn k="city">City</SortBtn></th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</th>
@@ -181,7 +235,10 @@ export default function LeadsClient() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {sorted.map(lead => (
-                  <tr key={lead.id} className="hover:bg-white/3" style={{ transition: 'background 0.1s' }}>
+                  <tr key={lead.id} className={`hover:bg-white/3 ${selected.has(lead.id) ? 'bg-[#0ea5e9]/5' : ''}`} style={{ transition: 'background 0.1s' }}>
+                    <td className="px-4 py-3">
+                      <input type="checkbox" checked={selected.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="accent-[#0ea5e9] cursor-pointer" />
+                    </td>
                     <td className="px-4 py-3">
                       <div>
                         <span className="font-medium text-white">{lead.business_name}</span>
