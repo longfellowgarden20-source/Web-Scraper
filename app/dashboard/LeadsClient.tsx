@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star, Download } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star, Download, Send } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -63,6 +63,8 @@ export default function LeadsClient() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkUpdating, setBulkUpdating] = useState(false)
+  const [digestSending, setDigestSending] = useState(false)
+  const [digestMsg, setDigestMsg] = useState<string | null>(null)
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -130,6 +132,16 @@ export default function LeadsClient() {
     setSelected(prev => prev.size === sorted.length ? new Set() : new Set(sorted.map(l => l.id)))
   }
 
+  const sendDigest = async () => {
+    setDigestSending(true)
+    setDigestMsg(null)
+    const res = await fetch('/api/digest', { method: 'POST' })
+    const data = await res.json()
+    setDigestMsg(res.ok ? 'Digest sent! Check your inbox.' : data.error ?? 'Failed to send')
+    setDigestSending(false)
+    setTimeout(() => setDigestMsg(null), 5000)
+  }
+
   const SortBtn = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
     <button onClick={() => setSort(k)} className="flex items-center gap-1 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-white" style={{ transition: 'color 0.15s' }}>
       {children}
@@ -150,6 +162,10 @@ export default function LeadsClient() {
           <p className="text-sm text-slate-500 mt-0.5">{leads.length} total · {newCount} new</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={sendDigest} disabled={digestSending} title="Send digest email" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/8 border border-white/10 rounded-lg disabled:opacity-40" style={{ transition: 'background 0.15s' }}>
+            {digestSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            {digestSending ? 'Sending...' : 'Send Digest'}
+          </button>
           <a href="/api/leads/export" download className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }} title="Export CSV">
             <Download className="w-4 h-4" />
           </a>
@@ -157,6 +173,9 @@ export default function LeadsClient() {
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
+        {digestMsg && (
+          <p className={`text-xs mt-1 ${digestMsg.includes('sent') ? 'text-green-400' : 'text-red-400'}`}>{digestMsg}</p>
+        )}
       </div>
 
       {/* Stats */}
