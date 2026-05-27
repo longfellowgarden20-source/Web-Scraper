@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest) {
 
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const allowed = ['status', 'notes', 'outreach_draft', 'starred']
+  const allowed = ['status', 'notes', 'outreach_draft', 'starred', 'called']
   const filtered = Object.fromEntries(Object.entries(updates).filter(([k]) => allowed.includes(k)))
 
   const { data, error } = await getSupabaseAdmin()

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send } from 'lucide-react'
+import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send, Phone } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -23,6 +23,7 @@ type Lead = {
   facebook: string | null
   google_rating: number | null
   google_review_count: number | null
+  called: boolean | null
 }
 
 const card = 'bg-white/5 border border-white/10 rounded-2xl'
@@ -221,7 +222,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       </div>
 
       {/* Status */}
-      <div className={`${card} p-5 flex items-center gap-4`}>
+      <div className={`${card} p-5 flex flex-col gap-4`}>
         <div className="flex-1">
           <p className="text-xs text-slate-500 mb-2">Status</p>
           <div className="flex flex-wrap gap-2">
@@ -240,6 +241,24 @@ export default function LeadDetailClient({ id }: { id: string }) {
               </button>
             ))}
           </div>
+        </div>
+        <div className="border-t border-white/10 pt-4">
+          <button
+            onClick={async () => {
+              const next = !lead.called
+              setLead(prev => prev ? { ...prev, called: next } : prev)
+              await updateField({ called: next } as Partial<Lead>)
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border ${
+              lead.called
+                ? 'bg-green-500/15 border-green-500/30 text-green-400'
+                : 'border-white/10 text-slate-400 hover:text-white hover:border-white/30'
+            }`}
+            style={{ transition: 'color 0.15s, background 0.15s, border-color 0.15s' }}
+          >
+            <Phone className={`w-4 h-4 ${lead.called ? 'fill-green-400' : ''}`} />
+            {lead.called ? 'Called — mark as not called' : 'Mark as called'}
+          </button>
         </div>
       </div>
 
