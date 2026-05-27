@@ -67,18 +67,43 @@ export default function LeadsClient() {
   const [bulkUpdating, setBulkUpdating] = useState(false)
   const [digestSending, setDigestSending] = useState(false)
   const [digestMsg, setDigestMsg] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
+    setPage(0)
+    setHasMore(true)
     const params = new URLSearchParams()
     if (statusFilter !== 'all') params.set('status', statusFilter)
     if (sourceFilter !== 'all') params.set('source', sourceFilter)
     if (search) params.set('search', search)
+    params.set('page', '0')
     const res = await fetch(`/api/leads?${params}`)
     const data = await res.json()
-    setLeads(Array.isArray(data) ? data : [])
+    const arr = Array.isArray(data) ? data : []
+    setLeads(arr)
+    setHasMore(arr.length === 200)
     setLoading(false)
   }, [statusFilter, sourceFilter, search])
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    const nextPage = page + 1
+    const params = new URLSearchParams()
+    if (statusFilter !== 'all') params.set('status', statusFilter)
+    if (sourceFilter !== 'all') params.set('source', sourceFilter)
+    if (search) params.set('search', search)
+    params.set('page', String(nextPage))
+    const res = await fetch(`/api/leads?${params}`)
+    const data = await res.json()
+    const arr = Array.isArray(data) ? data : []
+    setLeads(l => [...l, ...arr])
+    setPage(nextPage)
+    setHasMore(arr.length === 200)
+    setLoadingMore(false)
+  }
 
   useEffect(() => { fetchLeads() }, [fetchLeads])
 
@@ -392,6 +417,18 @@ export default function LeadsClient() {
             {sorted.length === 0 && (
               <div className="text-center py-16 text-slate-500 text-sm">No leads found. Run a scrape to find some.</div>
             )}
+          </div>
+        )}
+        {hasMore && !loading && (
+          <div className="flex justify-center p-4 border-t border-white/5">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white border border-white/10 rounded-lg hover:bg-white/5 disabled:opacity-40"
+              style={{ transition: 'color 0.15s, background 0.15s' }}
+            >
+              {loadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : 'Load more leads'}
+            </button>
           </div>
         )}
       </div>

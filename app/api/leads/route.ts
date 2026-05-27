@@ -8,12 +8,14 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status')
   const source = searchParams.get('source')
   const search = searchParams.get('search')
+  const page = parseInt(searchParams.get('page') ?? '0')
+  const pageSize = 200
 
   let query = getSupabaseAdmin()
     .from('leads')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(200)
+    .range(page * pageSize, (page + 1) * pageSize - 1)
 
   if (status && status !== 'all') query = query.eq('status', status)
   if (source && source !== 'all') query = query.eq('source', source)
