@@ -18,6 +18,14 @@ const KEYWORDS = [
   'my website is outdated', 'no website', 'need online presence',
 ]
 
+const SEARCH_QUERIES = [
+  'need a website',
+  'need web design',
+  'hire a developer',
+  'build me a site',
+  'no website',
+]
+
 type RedditPost = {
   id: string
   title: string
@@ -30,12 +38,33 @@ type RedditPost = {
 async function fetchSubreddit(subreddit: string): Promise<RedditPost[]> {
   try {
     const res = await fetch(
-      `https://www.reddit.com/r/${subreddit}/new.json?limit=50`,
+      `https://www.reddit.com/r/${subreddit}/new.json?limit=50&raw_json=1`,
       {
-        headers: { 'User-Agent': 'FastWebsitesBot/1.0' },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; FastWebsitesBot/1.0)',
+          'Accept': 'application/json',
+        },
         next: { revalidate: 0 },
       }
     )
+    if (!res.ok) return []
+    const data = await res.json()
+    return (data?.data?.children ?? []).map((c: { data: RedditPost }) => c.data)
+  } catch {
+    return []
+  }
+}
+
+async function searchReddit(query: string): Promise<RedditPost[]> {
+  try {
+    const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&limit=25&raw_json=1`
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; FastWebsitesBot/1.0)',
+        'Accept': 'application/json',
+      },
+      next: { revalidate: 0 },
+    })
     if (!res.ok) return []
     const data = await res.json()
     return (data?.data?.children ?? []).map((c: { data: RedditPost }) => c.data)
@@ -56,12 +85,30 @@ async function sleep(ms: number) {
 export async function POST() {
   try {
     const allMatches: RedditPost[] = []
+    const seenIds = new Set<string>()
 
-    for (let i = 0; i < SUBREDDITS.length; i++) {
+    // Search by keyword across all of Reddit
+    for (let i = 0; i < SEARCH_QUERIES.length; i++) {
       if (i > 0) await sleep(1000)
+      const posts = await searchReddit(SEARCH_QUERIES[i])
+      for (const post of posts) {
+        if (!seenIds.has(post.id) && matchesKeyword(post)) {
+          seenIds.add(post.id)
+          allMatches.push(post)
+        }
+      }
+    }
+
+    // Also scrape subreddits directly
+    for (let i = 0; i < SUBREDDITS.length; i++) {
+      await sleep(1000)
       const posts = await fetchSubreddit(SUBREDDITS[i])
-      const matched = posts.filter(matchesKeyword)
-      allMatches.push(...matched)
+      for (const post of posts.filter(matchesKeyword)) {
+        if (!seenIds.has(post.id)) {
+          seenIds.add(post.id)
+          allMatches.push(post)
+        }
+      }
     }
 
     let saved = 0
