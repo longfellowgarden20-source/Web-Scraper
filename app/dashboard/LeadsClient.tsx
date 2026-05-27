@@ -24,6 +24,7 @@ type Lead = {
   facebook: string | null
   google_rating: number | null
   google_review_count: number | null
+  starred: boolean | null
 }
 
 type SortKey = 'business_name' | 'score' | 'city' | 'created_at' | 'status'
@@ -132,6 +133,16 @@ export default function LeadsClient() {
     setSelected(prev => prev.size === sorted.length ? new Set() : new Set(sorted.map(l => l.id)))
   }
 
+  const toggleStar = async (lead: Lead) => {
+    const next = !lead.starred
+    setLeads(l => l.map(x => x.id === lead.id ? { ...x, starred: next } : x))
+    await fetch('/api/leads', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: lead.id, starred: next }),
+    })
+  }
+
   const sendDigest = async () => {
     setDigestSending(true)
     setDigestMsg(null)
@@ -193,6 +204,35 @@ export default function LeadsClient() {
         ))}
       </div>
 
+      {/* Promising Leads */}
+      {leads.some(l => l.starred) && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">Promising Leads</h2>
+            <span className="text-xs text-slate-500">{leads.filter(l => l.starred).length} saved</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {leads.filter(l => l.starred).map(lead => (
+              <div key={lead.id} className="flex items-center justify-between gap-3 px-4 py-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{lead.business_name}</p>
+                  <p className="text-xs text-slate-500">{lead.city || '—'} · {scoreBadge(lead.score)}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link href={`/leads/${lead.id}`} className="px-2.5 py-1 text-xs text-[#0ea5e9] border border-[#0ea5e9]/30 rounded-lg hover:bg-[#0ea5e9]/10" style={{ transition: 'background 0.15s' }}>
+                    View
+                  </Link>
+                  <button onClick={() => toggleStar(lead)} className="text-yellow-400 hover:text-slate-400" style={{ transition: 'color 0.15s' }} title="Remove">
+                    <Star className="w-4 h-4 fill-yellow-400" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className={`${card} p-4 flex flex-col sm:flex-row gap-3`}>
         <div className="relative flex-1">
@@ -249,6 +289,7 @@ export default function LeadsClient() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Reviews</th>
                   <th className="px-4 py-3 text-left"><SortBtn k="score">Score</SortBtn></th>
                   <th className="px-4 py-3 text-left"><SortBtn k="status">Status</SortBtn></th>
+                  <th className="px-4 py-3 w-8"></th>
                   <th className="px-4 py-3 w-10"></th>
                 </tr>
               </thead>
@@ -312,6 +353,16 @@ export default function LeadsClient() {
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">
                       {new Date(lead.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => toggleStar(lead)}
+                        title={lead.starred ? 'Remove from Promising' : 'Save to Promising'}
+                        className={`${lead.starred ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`}
+                        style={{ transition: 'color 0.15s' }}
+                      >
+                        <Star className={`w-4 h-4 ${lead.starred ? 'fill-yellow-400' : ''}`} />
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <Link

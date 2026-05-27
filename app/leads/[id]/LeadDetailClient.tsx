@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -49,6 +49,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [notes, setNotes] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
   const [status, setStatus] = useState('')
+  const [manualEmail, setManualEmail] = useState('')
 
   useEffect(() => {
     fetch(`/api/leads/${id}`)
@@ -229,9 +230,11 @@ export default function LeadDetailClient({ id }: { id: string }) {
                 key={s}
                 onClick={() => handleStatusChange(s)}
                 className={`px-3 py-1 rounded-full text-xs font-semibold capitalize border ${
-                  status === s ? 'border-transparent' : 'border-white/10 text-slate-500 hover:text-white'
+                  status === s
+                    ? 'border-transparent ring-2 ring-white/20'
+                    : 'border-white/10 text-slate-500 hover:text-white'
                 }`}
-                style={status === s ? {} : { transition: 'color 0.15s' }}
+                style={{ transition: 'color 0.15s' }}
               >
                 {status === s ? statusBadge(s) : s}
               </button>
@@ -287,14 +290,32 @@ export default function LeadDetailClient({ id }: { id: string }) {
             <div className="p-4 bg-white/3 border border-white/10 rounded-xl text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
               {lead.outreach_draft}
             </div>
-            <button
-              onClick={copyDraft}
-              className="self-start flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-white/10 rounded-lg text-slate-400 hover:text-white hover:border-white/30"
-              style={{ transition: 'color 0.15s, border-color 0.15s' }}
-            >
-              {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy to clipboard</>}
-            </button>
-            <p className="text-xs text-slate-600">Copy and send manually — this tool never auto-sends.</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={copyDraft}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-white/10 rounded-lg text-slate-400 hover:text-white hover:border-white/30"
+                style={{ transition: 'color 0.15s, border-color 0.15s' }}
+              >
+                {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+              </button>
+              <a
+                href={`mailto:${lead.email ?? manualEmail}?subject=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft ?? '')}`}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0ea5e9] text-black rounded-lg hover:bg-[#38bdf8]"
+                style={{ transition: 'background 0.15s' }}
+              >
+                <Send className="w-3.5 h-3.5" /> Send via Email
+              </a>
+            </div>
+            {!lead.email && (
+              <input
+                type="email"
+                value={manualEmail}
+                onChange={e => setManualEmail(e.target.value)}
+                placeholder="No email found — enter one manually"
+                className={inputCls}
+              />
+            )}
+            <p className="text-xs text-slate-600">Opens Gmail — review before sending.</p>
           </div>
         ) : (
           <p className="text-sm text-slate-500">No draft yet. Click Generate to create personalized outreach.</p>

@@ -34,7 +34,7 @@ Business details:
 - ${sourceInfo}
 ${reviewInfo ? `- ${reviewInfo}` : ''}
 
-Write a short, human-sounding cold outreach message. 3-5 sentences max. Be direct and specific about why you're reaching out. Reference their business type and web situation. End with a soft call to action. Do not use generic filler phrases. Do not mention the score number. Sign off as "Fast Websites team".`
+Write a short, human-sounding cold outreach message. 3-5 sentences max. Be direct and specific about why you're reaching out. Reference their business type and web situation. End with a soft call to action. Do not use generic filler phrases. Do not mention the score number. Sign off as "Fast Websites team". Add a final line: "Reply STOP to opt out of future messages."`
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
