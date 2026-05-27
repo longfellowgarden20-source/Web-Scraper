@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star, Download, Send } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star, Download, Send, Wand2, Phone, LayoutGrid, List, Bell } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -25,6 +25,7 @@ type Lead = {
   google_rating: number | null
   google_review_count: number | null
   starred: boolean | null
+  follow_up_date: string | null
 }
 
 type SortKey = 'business_name' | 'score' | 'city' | 'created_at' | 'status'
@@ -70,6 +71,14 @@ export default function LeadsClient() {
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [view, setView] = useState<'table' | 'kanban'>('table')
+  const [generatingId, setGeneratingId] = useState<string | null>(null)
+  const [bulkGenerating, setBulkGenerating] = useState(false)
+  const [scrapeQuery, setScrapeQuery] = useState('')
+  const [scraping, setScraping] = useState(false)
+  const [scrapeMsg, setScrapeMsg] = useState<string | null>(null)
+  const [followUpId, setFollowUpId] = useState<string | null>(null)
+  const [followUpDate, setFollowUpDate] = useState('')
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -174,6 +183,64 @@ export default function LeadsClient() {
     })
   }
 
+  const generateDraft = async (lead: Lead) => {
+    setGeneratingId(lead.id)
+    const res = await fetch('/api/outreach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: lead.id }),
+    })
+    const data = await res.json()
+    if (data.draft) {
+      setLeads(l => l.map(x => x.id === lead.id ? { ...x, outreach_draft: data.draft } : x))
+    }
+    setGeneratingId(null)
+  }
+
+  const bulkGenerateDrafts = async () => {
+    if (!selected.size) return
+    setBulkGenerating(true)
+    const ids = [...selected]
+    await Promise.all(ids.map(id =>
+      fetch('/api/outreach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      }).then(r => r.json()).then(data => {
+        if (data.draft) setLeads(l => l.map(x => x.id === id ? { ...x, outreach_draft: data.draft } : x))
+      })
+    ))
+    setSelected(new Set())
+    setBulkGenerating(false)
+  }
+
+  const scrapeNow = async () => {
+    if (!scrapeQuery.trim()) return
+    setScraping(true)
+    setScrapeMsg(null)
+    const res = await fetch('/api/scrape/maps', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: scrapeQuery.trim() }),
+    })
+    const data = await res.json()
+    setScrapeMsg(res.ok ? `Done — ${data.saved ?? 0} new leads saved` : data.error ?? 'Failed')
+    if (res.ok) fetchLeads()
+    setScraping(false)
+    setTimeout(() => setScrapeMsg(null), 5000)
+  }
+
+  const saveFollowUp = async (id: string, date: string) => {
+    await fetch('/api/leads', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, follow_up_date: date }),
+    })
+    setLeads(l => l.map(x => x.id === id ? { ...x, follow_up_date: date } as Lead : x))
+    setFollowUpId(null)
+    setFollowUpDate('')
+  }
+
   const sendDigest = async () => {
     setDigestSending(true)
     setDigestMsg(null)
@@ -196,14 +263,26 @@ export default function LeadsClient() {
   const mapsCount = leads.filter(l => l.source === 'google_maps').length
   const redditCount = leads.filter(l => l.source === 'reddit').length
 
+  // Follow-ups due today
+  const today = new Date().toISOString().split('T')[0]
+  const followUpsDue = leads.filter(l => l.follow_up_date && l.follow_up_date <= today)
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Leads</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{leads.length} total · {newCount} new</p>
+          <p className="text-sm text-slate-500 mt-0.5">{leads.length} total · {newCount} new{followUpsDue.length > 0 ? ` · ${followUpsDue.length} follow-ups due` : ''}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center border border-white/10 rounded-lg overflow-hidden">
+            <button onClick={() => setView('table')} className={`p-2 ${view === 'table' ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`} style={{ transition: 'background 0.15s' }} title="Table view">
+              <List className="w-4 h-4" />
+            </button>
+            <button onClick={() => setView('kanban')} className={`p-2 ${view === 'kanban' ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`} style={{ transition: 'background 0.15s' }} title="Kanban view">
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
           <button onClick={sendDigest} disabled={digestSending} title="Send digest email" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/8 border border-white/10 rounded-lg disabled:opacity-40" style={{ transition: 'background 0.15s' }}>
             {digestSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             {digestSending ? 'Sending...' : 'Send Digest'}
@@ -215,10 +294,43 @@ export default function LeadsClient() {
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-        {digestMsg && (
-          <p className={`text-xs mt-1 ${digestMsg.includes('sent') ? 'text-green-400' : 'text-red-400'}`}>{digestMsg}</p>
-        )}
+        {digestMsg && <p className={`w-full text-xs ${digestMsg.includes('sent') ? 'text-green-400' : 'text-red-400'}`}>{digestMsg}</p>}
       </div>
+
+      {/* On-demand scrape */}
+      <div className={`${card} p-4 flex gap-3 items-center`}>
+        <Search className="w-4 h-4 text-slate-500 shrink-0" />
+        <input
+          value={scrapeQuery}
+          onChange={e => setScrapeQuery(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && scrapeNow()}
+          placeholder="Scrape now — e.g. plumbers in Dallas, restaurants in Miami..."
+          className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none"
+        />
+        {scrapeMsg && <span className={`text-xs shrink-0 ${scrapeMsg.includes('new') ? 'text-green-400' : 'text-red-400'}`}>{scrapeMsg}</span>}
+        <button onClick={scrapeNow} disabled={scraping || !scrapeQuery.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-black rounded-lg disabled:opacity-40 shrink-0" style={{ background: '#0ea5e9', transition: 'opacity 0.15s' }}>
+          {scraping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          {scraping ? 'Scraping...' : 'Scrape'}
+        </button>
+      </div>
+
+      {/* Follow-ups due */}
+      {followUpsDue.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold text-yellow-400 uppercase tracking-wide">Follow-ups Due Today</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {followUpsDue.map(lead => (
+              <div key={lead.id} className="flex items-center justify-between gap-3 px-4 py-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
+                <div>
+                  <p className="text-sm font-semibold text-white">{lead.business_name}</p>
+                  <p className="text-xs text-slate-500">{lead.city || '—'} · {lead.follow_up_date}</p>
+                </div>
+                <Link href={`/leads/${lead.id}`} className="px-2.5 py-1 text-xs text-[#0ea5e9] border border-[#0ea5e9]/30 rounded-lg hover:bg-[#0ea5e9]/10 shrink-0" style={{ transition: 'background 0.15s' }}>View</Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -291,8 +403,12 @@ export default function LeadsClient() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 rounded-xl">
+        <div className="flex items-center gap-3 px-4 py-3 bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 rounded-xl flex-wrap">
           <span className="text-sm text-[#0ea5e9] font-semibold">{selected.size} selected</span>
+          <button onClick={bulkGenerateDrafts} disabled={bulkGenerating} className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-black rounded-lg disabled:opacity-40" style={{ background: '#0ea5e9' }}>
+            {bulkGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+            {bulkGenerating ? 'Generating...' : 'Generate All Drafts'}
+          </button>
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-slate-400">Mark as:</span>
             {['contacted', 'replied', 'converted', 'passed'].map(s => (
@@ -306,8 +422,32 @@ export default function LeadsClient() {
         </div>
       )}
 
+      {/* Kanban view */}
+      {view === 'kanban' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {(['new', 'contacted', 'replied', 'converted'] as Lead['status'][]).map(col => (
+            <div key={col} className={`${card} p-3 flex flex-col gap-2`}>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-1">{col} <span className="text-slate-600 font-normal">({sorted.filter(l => l.status === col).length})</span></p>
+              {sorted.filter(l => l.status === col).map(lead => (
+                <Link key={lead.id} href={`/leads/${lead.id}`} className="block p-3 rounded-xl border border-white/10 hover:border-[#0ea5e9]/40 bg-white/3 hover:bg-white/5" style={{ transition: 'border-color 0.15s, background 0.15s' }}>
+                  <p className="text-sm font-semibold text-white truncate">{lead.business_name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{lead.city || '—'}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    {scoreBadge(lead.score)}
+                    {lead.email && <Mail className="w-3 h-3 text-[#0ea5e9]" />}
+                  </div>
+                </Link>
+              ))}
+              {sorted.filter(l => l.status === col).length === 0 && (
+                <p className="text-xs text-slate-600 text-center py-4">Empty</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Table */}
-      <div className={`${card} overflow-hidden`}>
+      {view === 'table' && <div className={`${card} overflow-hidden`}>
         {loading ? (
           <div className="flex items-center justify-center py-20 text-slate-500 gap-2">
             <Loader2 className="w-5 h-5 animate-spin" /> Loading leads...
@@ -392,14 +532,45 @@ export default function LeadsClient() {
                       {new Date(lead.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => toggleStar(lead)}
-                        title={lead.starred ? 'Remove from Promising' : 'Save to Promising'}
-                        className={`${lead.starred ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`}
-                        style={{ transition: 'color 0.15s' }}
-                      >
-                        <Star className={`w-4 h-4 ${lead.starred ? 'fill-yellow-400' : ''}`} />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => toggleStar(lead)}
+                          title={lead.starred ? 'Remove from Promising' : 'Save to Promising'}
+                          className={`${lead.starred ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`}
+                          style={{ transition: 'color 0.15s' }}
+                        >
+                          <Star className={`w-4 h-4 ${lead.starred ? 'fill-yellow-400' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => { setFollowUpId(lead.id); setFollowUpDate(lead.follow_up_date ?? '') }}
+                          title="Set follow-up reminder"
+                          className={`${lead.follow_up_date ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`}
+                          style={{ transition: 'color 0.15s' }}
+                        >
+                          <Bell className={`w-4 h-4 ${lead.follow_up_date ? 'fill-yellow-400' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => generateDraft(lead)}
+                          disabled={generatingId === lead.id}
+                          title={lead.outreach_draft ? 'Regenerate draft' : 'Generate outreach draft'}
+                          className={`${lead.outreach_draft ? 'text-green-400' : 'text-slate-600 hover:text-[#0ea5e9]'} disabled:opacity-40`}
+                          style={{ transition: 'color 0.15s' }}
+                        >
+                          {generatingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                        </button>
+                        {lead.outreach_draft && lead.email && (
+                          <a
+                            href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Send via Gmail"
+                            className="text-slate-600 hover:text-[#0ea5e9]"
+                            style={{ transition: 'color 0.15s' }}
+                          >
+                            <Send className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -431,7 +602,30 @@ export default function LeadsClient() {
             </button>
           </div>
         )}
-      </div>
+      </div>}
+
+      {/* Follow-up date modal */}
+      {followUpId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setFollowUpId(null)}>
+          <div className="w-80 p-6 rounded-2xl border border-white/10 flex flex-col gap-4" style={{ background: '#0f172a' }} onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-bold text-white">Set Follow-up Reminder</p>
+            <input
+              type="date"
+              value={followUpDate}
+              onChange={e => setFollowUpDate(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-lg text-white border border-white/10 focus:outline-none focus:border-[#0ea5e9]/60"
+              style={{ background: '#0a0f1a' }}
+            />
+            <div className="flex gap-2">
+              <button onClick={() => saveFollowUp(followUpId, followUpDate)} disabled={!followUpDate} className="flex-1 py-2 text-sm font-bold text-black rounded-lg disabled:opacity-40" style={{ background: '#0ea5e9' }}>Save</button>
+              {leads.find(l => l.id === followUpId)?.follow_up_date && (
+                <button onClick={() => saveFollowUp(followUpId, '')} className="px-3 py-2 text-sm font-semibold text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10" style={{ transition: 'background 0.15s' }}>Clear</button>
+              )}
+              <button onClick={() => setFollowUpId(null)} className="px-3 py-2 text-sm text-slate-400 border border-white/10 rounded-lg hover:text-white" style={{ transition: 'color 0.15s' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
