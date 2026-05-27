@@ -299,11 +299,13 @@ export default function LeadDetailClient({ id }: { id: string }) {
                 {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
               </button>
               <a
-                href={`mailto:${lead.email ?? manualEmail}?subject=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft ?? '')}`}
+                href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft ?? '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0ea5e9] text-black rounded-lg hover:bg-[#38bdf8]"
                 style={{ transition: 'background 0.15s' }}
               >
-                <Send className="w-3.5 h-3.5" /> Send via Email
+                <Send className="w-3.5 h-3.5" /> Send via Gmail
               </a>
             </div>
             {!lead.email && (
