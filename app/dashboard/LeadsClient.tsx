@@ -59,6 +59,7 @@ export default function LeadsClient() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [scoreFilter, setScoreFilter] = useState<string>('all')
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -86,7 +87,12 @@ export default function LeadsClient() {
     else { setSortKey(k); setSortDir('desc') }
   }
 
-  const sorted = [...leads].sort((a, b) => {
+  const filtered = scoreFilter === 'all' ? leads
+    : scoreFilter === 'high' ? leads.filter(l => l.score >= 8)
+    : scoreFilter === 'mid' ? leads.filter(l => l.score >= 5 && l.score < 8)
+    : leads.filter(l => l.score < 5)
+
+  const sorted = [...filtered].sort((a, b) => {
     const mul = sortDir === 'asc' ? 1 : -1
     if (sortKey === 'score') return mul * (a.score - b.score)
     if (sortKey === 'business_name') return mul * a.business_name.localeCompare(b.business_name)
@@ -130,7 +136,7 @@ export default function LeadsClient() {
   }
 
   const toggleSelectAll = () => {
-    setSelected(prev => prev.size === sorted.length ? new Set() : new Set(sorted.map(l => l.id)))
+    setSelected(prev => prev.size === sorted.length ? new Set() : new Set(sorted.map((l: Lead) => l.id)))
   }
 
   const toggleStar = async (lead: Lead) => {
@@ -249,6 +255,12 @@ export default function LeadsClient() {
         </select>
         <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className={select}>
           {SOURCES.map(s => <option key={s} value={s}>{s === 'all' ? 'All sources' : s === 'google_maps' ? 'Google Maps' : 'Reddit'}</option>)}
+        </select>
+        <select value={scoreFilter} onChange={e => setScoreFilter(e.target.value)} className={select}>
+          <option value="all">All scores</option>
+          <option value="high">High (8–10)</option>
+          <option value="mid">Mid (5–7)</option>
+          <option value="low">Low (1–4)</option>
         </select>
       </div>
 
