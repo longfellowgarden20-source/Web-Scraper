@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Pick the query that was run least recently (or never)
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('scrape_queries')
     .select('id, query')
     .order('last_run', { ascending: true, nullsFirst: true })
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const result = await res.json()
 
   // Mark this query as just run
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from('scrape_queries')
     .update({ last_run: new Date().toISOString() })
     .eq('id', data.id)

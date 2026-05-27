@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   if (!id) return NextResponse.json({ error: 'Missing lead id' }, { status: 400 })
 
-  const { data: lead, error } = await supabaseAdmin.from('leads').select('*').eq('id', id).single()
+  const { data: lead, error } = await getSupabaseAdmin().from('leads').select('*').eq('id', id).single()
   if (error || !lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
   const websiteInfo = lead.website
@@ -65,7 +65,7 @@ Write a short, human-sounding cold outreach message. 3-5 sentences max. Be direc
   const draft = data.choices?.[0]?.message?.content?.trim()
   if (!draft) return NextResponse.json({ error: 'Empty response from Groq' }, { status: 500 })
 
-  await supabaseAdmin.from('leads').update({ outreach_draft: draft }).eq('id', id)
+  await getSupabaseAdmin().from('leads').update({ outreach_draft: draft }).eq('id', id)
 
   return NextResponse.json({ draft })
 }

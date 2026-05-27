@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { transporter } from '@/lib/mailer'
 
 export const dynamic = 'force-dynamic'
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   // Get leads from the last 24 hours
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-  const { data: leads, error } = await supabaseAdmin
+  const { data: leads, error } = await getSupabaseAdmin()
     .from('leads')
     .select('*')
     .gte('created_at', since)

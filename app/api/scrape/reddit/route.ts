@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,7 +68,7 @@ export async function POST() {
     for (const post of allMatches) {
       const redditUrl = `https://reddit.com${post.permalink}`
 
-      const { data: existing } = await supabaseAdmin
+      const { data: existing } = await getSupabaseAdmin()
         .from('leads')
         .select('id')
         .eq('reddit_url', redditUrl)
@@ -76,7 +76,7 @@ export async function POST() {
 
       if (existing) continue
 
-      const { error } = await supabaseAdmin.from('leads').insert({
+      const { error } = await getSupabaseAdmin().from('leads').insert({
         source: 'reddit',
         business_name: post.title.slice(0, 80),
         city: null,

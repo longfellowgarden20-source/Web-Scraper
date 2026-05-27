@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const source = searchParams.get('source')
   const search = searchParams.get('search')
 
-  let query = supabaseAdmin
+  let query = getSupabaseAdmin()
     .from('leads')
     .select('*')
     .order('created_at', { ascending: false })
@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest) {
   const allowed = ['status', 'notes', 'outreach_draft']
   const filtered = Object.fromEntries(Object.entries(updates).filter(([k]) => allowed.includes(k)))
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from('leads')
     .update(filtered)
     .eq('id', id)

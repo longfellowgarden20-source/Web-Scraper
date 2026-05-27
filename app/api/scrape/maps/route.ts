@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
         facebook: enrichment.facebook,
       }
 
-      const { error } = await supabaseAdmin
+      const { error } = await getSupabaseAdmin()
         .from('leads')
         .upsert(lead, { onConflict: 'maps_place_id', ignoreDuplicates: false })
 
