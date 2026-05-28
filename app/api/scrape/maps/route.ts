@@ -180,7 +180,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'query is required' }, { status: 400 })
   }
 
-  const placeIds = await searchPlaces(query)
+  // Default to California if no US state or city context is given
+  const CA_PATTERN = /\b(california|CA|Los Angeles|San Diego|San Francisco|San Jose|Sacramento|Fresno|Oakland|Bakersfield|Anaheim|Riverside|Stockton|Irvine|Chula Vista|Fremont|Long Beach|Santa Ana|Modesto|Fontana)\b/i
+  const focusedQuery = CA_PATTERN.test(query) ? query : `${query.trim()}, California`
+
+  const placeIds = await searchPlaces(focusedQuery)
   if (!placeIds.length) {
     return NextResponse.json({ saved: 0, message: 'No results found for that query.' })
   }
