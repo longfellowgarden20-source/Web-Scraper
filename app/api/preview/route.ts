@@ -43,10 +43,17 @@ function getColors(category: string): typeof DEFAULT_COLORS {
   return DEFAULT_COLORS
 }
 
+function darkenHex(hex: string): string {
+  // Parse hex and reduce each channel by ~20% to produce a hover/dark variant
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const d = (n: number) => Math.max(0, Math.floor(n * 0.78)).toString(16).padStart(2, '0')
+  return `#${d(r)}${d(g)}${d(b)}`
+}
+
 function pickAccentFromOverride(override: string, base: typeof DEFAULT_COLORS): typeof DEFAULT_COLORS {
-  // Keep all derived tints from base palette, but swap accent + accentDark for the override
-  const dark = override // close enough — can't compute proper dark without colorsys
-  return { ...base, accent: override, accentDark: dark }
+  return { ...base, accent: override, accentDark: darkenHex(override) }
 }
 
 // Map industry keywords to icon sets appropriate for that vertical
@@ -98,7 +105,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { leadId, colorOverride, template = 'modern' } = await req.json()
+  const { leadId, colorOverride } = await req.json()
   if (!leadId) return NextResponse.json({ error: 'Missing leadId' }, { status: 400 })
 
   const { data: lead, error } = await getSupabaseAdmin()
@@ -278,14 +285,20 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     return NextResponse.json({ error: 'Invalid Groq response' }, { status: 500 })
   }
 
-  const content = groqData.choices?.[0]?.message?.content?.trim() ?? ''
+  const rawContent = groqData.choices?.[0]?.message?.content?.trim() ?? ''
+
+  // Strip markdown fences if model wrapped output in ```json ... ```
+  const stripped = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+
+  // Remove JS-style trailing commas before } or ] which are invalid JSON
+  const cleaned = stripped.replace(/,(\s*[}\]])/g, '$1')
 
   let generated: Record<string, unknown>
   try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    generated = JSON.parse(jsonMatch?.[0] ?? content)
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    generated = JSON.parse(jsonMatch?.[0] ?? cleaned)
   } catch {
-    return NextResponse.json({ error: `Could not parse Groq JSON: ${content.slice(0, 300)}` }, { status: 500 })
+    return NextResponse.json({ error: `Could not parse Groq JSON: ${rawContent.slice(0, 300)}` }, { status: 500 })
   }
 
   // Build the full business_config merging generated content + real identity fields
@@ -344,7 +357,7 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
   const base = process.env.NEXUS_AGENCY_URL ?? 'https://nexus-agency-formore-cvufrmzih.vercel.app'
-  const previewUrl = `${base}/preview/${preview.id}${template !== 'modern' ? `?t=${template}` : ''}`
+  const previewUrl = `${base}/preview/${preview.id}`
 
   return NextResponse.json({ previewUrl, previewId: preview.id })
 }

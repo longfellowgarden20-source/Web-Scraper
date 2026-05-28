@@ -58,7 +58,6 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [previewViews, setPreviewViews] = useState<number | null>(null)
   const [previewColor, setPreviewColor] = useState('#0ea5e9')
-  const [previewTemplate, setPreviewTemplate] = useState<'modern' | 'bold' | 'minimal'>('modern')
 
   useEffect(() => {
     fetch(`/api/leads/${id}`)
@@ -137,7 +136,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       const res = await fetch('/api/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: id, colorOverride: previewColor, template: previewTemplate }),
+        body: JSON.stringify({ leadId: id, colorOverride: previewColor }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
@@ -439,16 +438,6 @@ export default function LeadDetailClient({ id }: { id: string }) {
             <p className="text-xs text-slate-600 mt-0.5">Generate a tailored site to send as a pitch</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold">
-              {(['modern', 'bold', 'minimal'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setPreviewTemplate(t)}
-                  className={`px-2.5 py-1.5 capitalize ${previewTemplate === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
-                  style={{ transition: 'background 0.15s, color 0.15s' }}
-                >{t}</button>
-              ))}
-            </div>
             <div className="flex items-center gap-1.5 px-2 py-1 border border-white/10 rounded-lg">
               <span className="text-xs text-slate-500">Color</span>
               <input
