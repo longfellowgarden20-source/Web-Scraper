@@ -3,48 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
-const INDUSTRY_COLORS: Record<string, { accent: string; accentDark: string; accentLight: string; accentBorder: string; accentFooter: string; accentFooterBorder: string; accentFooterText: string; accentFooterHeading: string }> = {
-  plumber:      { accent: '#1d4ed8', accentDark: '#1e3a8a', accentLight: '#eff6ff', accentBorder: '#bfdbfe', accentFooter: '#1e3a8a', accentFooterBorder: '#1d4ed8', accentFooterText: '#bfdbfe', accentFooterHeading: '#dbeafe' },
-  plumbing:     { accent: '#1d4ed8', accentDark: '#1e3a8a', accentLight: '#eff6ff', accentBorder: '#bfdbfe', accentFooter: '#1e3a8a', accentFooterBorder: '#1d4ed8', accentFooterText: '#bfdbfe', accentFooterHeading: '#dbeafe' },
-  electrician:  { accent: '#b45309', accentDark: '#92400e', accentLight: '#fffbeb', accentBorder: '#fde68a', accentFooter: '#78350f', accentFooterBorder: '#92400e', accentFooterText: '#fde68a', accentFooterHeading: '#fef3c7' },
-  electrical:   { accent: '#b45309', accentDark: '#92400e', accentLight: '#fffbeb', accentBorder: '#fde68a', accentFooter: '#78350f', accentFooterBorder: '#92400e', accentFooterText: '#fde68a', accentFooterHeading: '#fef3c7' },
-  restaurant:   { accent: '#dc2626', accentDark: '#991b1b', accentLight: '#fef2f2', accentBorder: '#fecaca', accentFooter: '#7f1d1d', accentFooterBorder: '#991b1b', accentFooterText: '#fecaca', accentFooterHeading: '#fee2e2' },
-  food:         { accent: '#dc2626', accentDark: '#991b1b', accentLight: '#fef2f2', accentBorder: '#fecaca', accentFooter: '#7f1d1d', accentFooterBorder: '#991b1b', accentFooterText: '#fecaca', accentFooterHeading: '#fee2e2' },
-  landscap:     { accent: '#16a34a', accentDark: '#166534', accentLight: '#f0fdf4', accentBorder: '#bbf7d0', accentFooter: '#14532d', accentFooterBorder: '#15803d', accentFooterText: '#bbf7d0', accentFooterHeading: '#dcfce7' },
-  lawn:         { accent: '#16a34a', accentDark: '#166534', accentLight: '#f0fdf4', accentBorder: '#bbf7d0', accentFooter: '#14532d', accentFooterBorder: '#15803d', accentFooterText: '#bbf7d0', accentFooterHeading: '#dcfce7' },
-  garden:       { accent: '#16a34a', accentDark: '#166534', accentLight: '#f0fdf4', accentBorder: '#bbf7d0', accentFooter: '#14532d', accentFooterBorder: '#15803d', accentFooterText: '#bbf7d0', accentFooterHeading: '#dcfce7' },
-  salon:        { accent: '#9333ea', accentDark: '#7e22ce', accentLight: '#faf5ff', accentBorder: '#e9d5ff', accentFooter: '#581c87', accentFooterBorder: '#7e22ce', accentFooterText: '#e9d5ff', accentFooterHeading: '#f3e8ff' },
-  hair:         { accent: '#9333ea', accentDark: '#7e22ce', accentLight: '#faf5ff', accentBorder: '#e9d5ff', accentFooter: '#581c87', accentFooterBorder: '#7e22ce', accentFooterText: '#e9d5ff', accentFooterHeading: '#f3e8ff' },
-  beauty:       { accent: '#9333ea', accentDark: '#7e22ce', accentLight: '#faf5ff', accentBorder: '#e9d5ff', accentFooter: '#581c87', accentFooterBorder: '#7e22ce', accentFooterText: '#e9d5ff', accentFooterHeading: '#f3e8ff' },
-  hvac:         { accent: '#0891b2', accentDark: '#0e7490', accentLight: '#ecfeff', accentBorder: '#a5f3fc', accentFooter: '#164e63', accentFooterBorder: '#0e7490', accentFooterText: '#a5f3fc', accentFooterHeading: '#cffafe' },
-  roofing:      { accent: '#b45309', accentDark: '#92400e', accentLight: '#fffbeb', accentBorder: '#fde68a', accentFooter: '#78350f', accentFooterBorder: '#92400e', accentFooterText: '#fde68a', accentFooterHeading: '#fef3c7' },
-  roofer:       { accent: '#b45309', accentDark: '#92400e', accentLight: '#fffbeb', accentBorder: '#fde68a', accentFooter: '#78350f', accentFooterBorder: '#92400e', accentFooterText: '#fde68a', accentFooterHeading: '#fef3c7' },
-  cleaning:     { accent: '#0284c7', accentDark: '#0369a1', accentLight: '#f0f9ff', accentBorder: '#bae6fd', accentFooter: '#0c4a6e', accentFooterBorder: '#0369a1', accentFooterText: '#bae6fd', accentFooterHeading: '#e0f2fe' },
-  contractor:   { accent: '#374151', accentDark: '#1f2937', accentLight: '#f9fafb', accentBorder: '#d1d5db', accentFooter: '#111827', accentFooterBorder: '#1f2937', accentFooterText: '#d1d5db', accentFooterHeading: '#f3f4f6' },
-  construction: { accent: '#374151', accentDark: '#1f2937', accentLight: '#f9fafb', accentBorder: '#d1d5db', accentFooter: '#111827', accentFooterBorder: '#1f2937', accentFooterText: '#d1d5db', accentFooterHeading: '#f3f4f6' },
-  painter:      { accent: '#6d28d9', accentDark: '#5b21b6', accentLight: '#f5f3ff', accentBorder: '#ddd6fe', accentFooter: '#3b0764', accentFooterBorder: '#5b21b6', accentFooterText: '#ddd6fe', accentFooterHeading: '#ede9fe' },
-  painting:     { accent: '#6d28d9', accentDark: '#5b21b6', accentLight: '#f5f3ff', accentBorder: '#ddd6fe', accentFooter: '#3b0764', accentFooterBorder: '#5b21b6', accentFooterText: '#ddd6fe', accentFooterHeading: '#ede9fe' },
-  mechanic:     { accent: '#374151', accentDark: '#1f2937', accentLight: '#f9fafb', accentBorder: '#d1d5db', accentFooter: '#111827', accentFooterBorder: '#1f2937', accentFooterText: '#d1d5db', accentFooterHeading: '#f3f4f6' },
-  auto:         { accent: '#374151', accentDark: '#1f2937', accentLight: '#f9fafb', accentBorder: '#d1d5db', accentFooter: '#111827', accentFooterBorder: '#1f2937', accentFooterText: '#d1d5db', accentFooterHeading: '#f3f4f6' },
-  dental:       { accent: '#0ea5e9', accentDark: '#0284c7', accentLight: '#f0f9ff', accentBorder: '#bae6fd', accentFooter: '#0c4a6e', accentFooterBorder: '#0284c7', accentFooterText: '#bae6fd', accentFooterHeading: '#e0f2fe' },
-  dentist:      { accent: '#0ea5e9', accentDark: '#0284c7', accentLight: '#f0f9ff', accentBorder: '#bae6fd', accentFooter: '#0c4a6e', accentFooterBorder: '#0284c7', accentFooterText: '#bae6fd', accentFooterHeading: '#e0f2fe' },
-  medical:      { accent: '#0ea5e9', accentDark: '#0284c7', accentLight: '#f0f9ff', accentBorder: '#bae6fd', accentFooter: '#0c4a6e', accentFooterBorder: '#0284c7', accentFooterText: '#bae6fd', accentFooterHeading: '#e0f2fe' },
-  gym:          { accent: '#ea580c', accentDark: '#c2410c', accentLight: '#fff7ed', accentBorder: '#fed7aa', accentFooter: '#7c2d12', accentFooterBorder: '#c2410c', accentFooterText: '#fed7aa', accentFooterHeading: '#ffedd5' },
-  fitness:      { accent: '#ea580c', accentDark: '#c2410c', accentLight: '#fff7ed', accentBorder: '#fed7aa', accentFooter: '#7c2d12', accentFooterBorder: '#c2410c', accentFooterText: '#fed7aa', accentFooterHeading: '#ffedd5' },
-}
-
-const DEFAULT_COLORS = { accent: '#0ea5e9', accentDark: '#0284c7', accentLight: '#f0f9ff', accentBorder: '#bae6fd', accentFooter: '#0c4a6e', accentFooterBorder: '#0284c7', accentFooterText: '#bae6fd', accentFooterHeading: '#e0f2fe' }
-
-function getColors(category: string): typeof DEFAULT_COLORS {
-  const lower = (category ?? '').toLowerCase()
-  for (const [key, colors] of Object.entries(INDUSTRY_COLORS)) {
-    if (lower.includes(key)) return colors
-  }
-  return DEFAULT_COLORS
-}
-
 function darkenHex(hex: string): string {
-  // Parse hex and reduce each channel by ~20% to produce a hover/dark variant
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
@@ -52,8 +11,24 @@ function darkenHex(hex: string): string {
   return `#${d(r)}${d(g)}${d(b)}`
 }
 
-function pickAccentFromOverride(override: string, base: typeof DEFAULT_COLORS): typeof DEFAULT_COLORS {
-  return { ...base, accent: override, accentDark: darkenHex(override) }
+function lightenHex(hex: string, alpha = '10'): string {
+  return `${hex}${alpha}`
+}
+
+function buildColorPalette(accent: string) {
+  const dark = darkenHex(accent)
+  // Very dark version for footer (darken twice)
+  const footer = darkenHex(dark)
+  return {
+    accent,
+    accentDark: dark,
+    accentLight: lightenHex(accent, '12'),
+    accentBorder: lightenHex(accent, '30'),
+    accentFooter: footer,
+    accentFooterBorder: dark,
+    accentFooterText: lightenHex(accent, '99'),
+    accentFooterHeading: lightenHex(accent, 'cc'),
+  }
 }
 
 // Map industry keywords to icon sets appropriate for that vertical
@@ -123,13 +98,9 @@ export async function POST(req: NextRequest) {
   const phone = lead.phone ?? ''
   const email = lead.email ?? ''
 
-  let colors = getColors(category)
-  if (colorOverride && /^#[0-9a-fA-F]{6}$/.test(colorOverride)) {
-    colors = pickAccentFromOverride(colorOverride, colors)
-  }
   const iconSet = getIconSet(category)
 
-  const prompt = `You are a professional website copywriter. Generate complete website content for a local ${category} business.
+  const prompt = `You are a professional website designer and copywriter. Generate complete website content AND a brand color for a local ${category} business.
 
 Business details:
 - Business name: ${name}
@@ -140,6 +111,7 @@ Business details:
 
 Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text, no trailing commas):
 {
+  "accentHex": "A single hex color (#rrggbb) that fits this industry and looks great as a brand color. Must have contrast ratio ≥ 4.5:1 against white (#ffffff) so text remains readable. Examples by industry: landscaping=#16a34a, plumbing=#1d4ed8, electrical=#b45309, cleaning=#0284c7, roofing=#92400e, salon=#9333ea, gym=#ea580c, dental=#0891b2, restaurant=#dc2626. Pick something fitting but feel free to vary the exact shade — avoid pure #000000 or #ffffff.",
   "shortName": "2-3 word short business name for nav/footer",
   "tagline": "one catchy sentence tagline mentioning the city, 10-16 words",
   "industry": "${category.toLowerCase().split(' ')[0]}",
@@ -301,6 +273,14 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     return NextResponse.json({ error: `Could not parse Groq JSON: ${rawContent.slice(0, 300)}` }, { status: 500 })
   }
 
+  // Build color palette from Groq's chosen accent (or colorOverride if provided)
+  const rawAccent = colorOverride && /^#[0-9a-fA-F]{6}$/.test(colorOverride)
+    ? colorOverride
+    : (typeof generated.accentHex === 'string' && /^#[0-9a-fA-F]{6}$/.test(generated.accentHex)
+        ? generated.accentHex
+        : '#0ea5e9')
+  const colors = buildColorPalette(rawAccent)
+
   // Build the full business_config merging generated content + real identity fields
   const businessConfig = {
     name,
@@ -343,7 +323,7 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
       headline: (generated.hero as Record<string, string>)?.headline ?? '',
       subheadline: (generated.hero as Record<string, string>)?.subheadline ?? '',
       services: (generated.services as { title: string }[] ?? []).map((s) => s.title),
-      primary_color: colors.accent,
+      primary_color: rawAccent,
       phone,
       email,
       cta_text: (generated.cta as Record<string, string>)?.ctaPrimary ?? 'Get a Quote',
