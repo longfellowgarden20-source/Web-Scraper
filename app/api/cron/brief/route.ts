@@ -12,20 +12,23 @@ export async function GET(req: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://your-app.vercel.app'
   const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
-  const [leadsRes, followUpsRes, projectsRes, invoicesRes] = await Promise.all([
+  const [leadsRes, followUpsRes, projectsRes, invoicesRes, hotLeadsRes] = await Promise.all([
     getSupabaseAdmin().from('leads').select('id, business_name, city, score, email, source').gte('created_at', since24h).order('score', { ascending: false }).limit(10),
     getSupabaseAdmin().from('leads').select('id, business_name, city, follow_up_date').lte('follow_up_date', today).not('follow_up_date', 'is', null).neq('status', 'converted').neq('status', 'passed'),
     getSupabaseAdmin().from('projects').select('id, client_name, status, deadline, price').eq('status', 'in_progress').order('deadline', { ascending: true }).limit(10),
     getSupabaseAdmin().from('invoices').select('id, client_name, amount, due_date').eq('paid', false).lte('due_date', today).order('due_date', { ascending: true }),
+    getSupabaseAdmin().from('leads').select('id, business_name, city, score, email').eq('status', 'new').gte('score', 8).lte('created_at', since48h).order('score', { ascending: false }).limit(5),
   ])
 
   const newLeads = leadsRes.data ?? []
   const followUps = followUpsRes.data ?? []
   const activeProjects = projectsRes.data ?? []
   const overdueInvoices = invoicesRes.data ?? []
+  const hotUncontacted = hotLeadsRes.data ?? []
 
   const overdueTotal = overdueInvoices.reduce((s, i) => s + (i.amount ?? 0), 0)
 
@@ -88,9 +91,17 @@ export async function GET(req: NextRequest) {
       <tr><td style="height:24px;"></td></tr>
 
       ${overdueInvoices.length > 0 ? `
-      <!-- Alert -->
-      <tr><td style="background:#450a0a;border:1px solid #7f1d1d;border-radius:12px;padding:14px 16px;margin-bottom:20px;">
+      <!-- Overdue invoice alert -->
+      <tr><td style="background:#450a0a;border:1px solid #7f1d1d;border-radius:12px;padding:14px 16px;">
         <p style="margin:0;color:#fca5a5;font-size:13px;font-weight:700;font-family:-apple-system,Arial,sans-serif;">⚠️ ${overdueInvoices.length} overdue invoice${overdueInvoices.length > 1 ? 's' : ''} — $${overdueTotal.toLocaleString()} outstanding</p>
+      </td></tr>
+      <tr><td style="height:16px;"></td></tr>` : ''}
+
+      ${hotUncontacted.length > 0 ? `
+      <!-- Hot leads alert -->
+      <tr><td style="background:#1c1408;border:1px solid #78350f;border-radius:12px;padding:14px 16px;">
+        <p style="margin:0 0 8px;color:#fbbf24;font-size:13px;font-weight:700;font-family:-apple-system,Arial,sans-serif;">🔥 ${hotUncontacted.length} hot lead${hotUncontacted.length > 1 ? 's' : ''} haven't been contacted in 48h</p>
+        ${hotUncontacted.map(l => `<p style="margin:2px 0;color:#d97706;font-size:12px;font-family:-apple-system,Arial,sans-serif;">· ${l.business_name}${l.city ? ` — ${l.city}` : ''} (score: ${l.score}/10)</p>`).join('')}
       </td></tr>
       <tr><td style="height:16px;"></td></tr>` : ''}
 
@@ -136,6 +147,7 @@ export async function GET(req: NextRequest) {
 </body></html>`
 
   const subjectParts = []
+  if (hotUncontacted.length > 0) subjectParts.push(`🔥 ${hotUncontacted.length} hot leads waiting`)
   if (newLeads.length > 0) subjectParts.push(`${newLeads.length} new leads`)
   if (followUps.length > 0) subjectParts.push(`${followUps.length} follow-ups due`)
   if (overdueInvoices.length > 0) subjectParts.push(`$${overdueTotal.toLocaleString()} overdue`)
@@ -151,5 +163,5 @@ export async function GET(req: NextRequest) {
     html,
   })
 
-  return NextResponse.json({ ok: true, newLeads: newLeads.length, followUps: followUps.length, overdueInvoices: overdueInvoices.length })
+  return NextResponse.json({ ok: true, newLeads: newLeads.length, followUps: followUps.length, overdueInvoices: overdueInvoices.length, hotUncontacted: hotUncontacted.length })
 }

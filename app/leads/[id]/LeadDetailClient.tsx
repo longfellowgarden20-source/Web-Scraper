@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send, Phone } from 'lucide-react'
+import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send, Phone, Globe } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -24,6 +24,7 @@ type Lead = {
   google_rating: number | null
   google_review_count: number | null
   called: boolean | null
+  score_reasons: string[] | null
 }
 
 const card = 'bg-white/5 border border-white/10 rounded-2xl'
@@ -51,6 +52,13 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [savingNotes, setSavingNotes] = useState(false)
   const [status, setStatus] = useState('')
   const [manualEmail, setManualEmail] = useState('')
+  const [outreachTone, setOutreachTone] = useState<'professional' | 'casual' | 'urgent' | 'sms'>('professional')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewViews, setPreviewViews] = useState<number | null>(null)
+  const [previewColor, setPreviewColor] = useState('#0ea5e9')
+  const [previewTemplate, setPreviewTemplate] = useState<'modern' | 'bold' | 'minimal'>('modern')
 
   useEffect(() => {
     fetch(`/api/leads/${id}`)
@@ -66,6 +74,15 @@ export default function LeadDetailClient({ id }: { id: string }) {
         setLoading(false)
       })
       .catch(() => setLoading(false))
+
+    // Fetch existing preview for this lead
+    fetch(`/api/preview?leadId=${id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.previewUrl) setPreviewUrl(data.previewUrl)
+        if (data?.viewCount != null) setPreviewViews(data.viewCount)
+      })
+      .catch(() => {})
   }, [id])
 
   const updateField = async (updates: Partial<Lead>) => {
@@ -98,7 +115,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       const res = await fetch('/api/outreach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, tone: outreachTone }),
       })
       const text = await res.text()
       if (!text) throw new Error(`Server error ${res.status} — empty response`)
@@ -110,6 +127,26 @@ export default function LeadDetailClient({ id }: { id: string }) {
       setDraftError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setDraftLoading(false)
+    }
+  }
+
+  const generatePreview = async () => {
+    setPreviewLoading(true)
+    setPreviewError(null)
+    try {
+      const res = await fetch('/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id, colorOverride: previewColor, template: previewTemplate }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
+      setPreviewUrl(data.previewUrl)
+      setPreviewViews(0)
+    } catch (e: unknown) {
+      setPreviewError(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setPreviewLoading(false)
     }
   }
 
@@ -150,6 +187,27 @@ export default function LeadDetailClient({ id }: { id: string }) {
         </div>
       </div>
 
+      {/* Website screenshot */}
+      {lead.website && (
+        <div className={`${card} overflow-hidden`}>
+          <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Current Website</p>
+            <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0ea5e9] hover:underline flex items-center gap-1">
+              {lead.website.replace(/^https?:\/\//, '').slice(0, 40)} <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="relative w-full bg-slate-900" style={{ height: 220 }}>
+            <img
+              src={`https://api.microlink.io/?url=${encodeURIComponent(lead.website)}&screenshot=true&meta=false&embed=screenshot.url`}
+              alt="Website screenshot"
+              className="w-full h-full object-cover object-top"
+              loading="lazy"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Info card */}
       <div className={`${card} p-5 grid grid-cols-2 gap-4`}>
         <div>
@@ -157,12 +215,24 @@ export default function LeadDetailClient({ id }: { id: string }) {
           <p className="text-sm text-white font-medium">{lead.source === 'google_maps' ? 'Google Maps' : 'Reddit'}</p>
         </div>
         <div>
-          <p className="text-xs text-slate-500 mb-1">Score</p>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${
-            lead.score >= 8 ? 'bg-red-500/15 text-red-400' :
-            lead.score >= 5 ? 'bg-yellow-500/15 text-yellow-400' :
-            'bg-slate-500/15 text-slate-400'
-          }`}>{lead.score}/10</span>
+          <p className="text-xs text-slate-500 mb-1">Score <span className="text-slate-600 font-normal normal-case">(10 = worst web presence)</span></p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${
+              lead.score >= 8 ? 'bg-red-500/15 text-red-400' :
+              lead.score >= 5 ? 'bg-yellow-500/15 text-yellow-400' :
+              'bg-slate-500/15 text-slate-400'
+            }`}>{lead.score}/10</span>
+            {lead.score_reasons && lead.score_reasons.length > 0 ? (
+              <span className="text-xs text-slate-500">— {lead.score_reasons.join(', ')}</span>
+            ) : (
+              <span className="text-xs text-slate-500">
+                {!lead.website ? '— No website found' :
+                 lead.score >= 8 ? '— Poor/outdated site, slow or broken' :
+                 lead.score >= 5 ? '— Basic site, room for improvement' :
+                 '— Decent web presence'}
+              </span>
+            )}
+          </div>
         </div>
         {lead.website && (
           <div className="col-span-2">
@@ -284,17 +354,29 @@ export default function LeadDetailClient({ id }: { id: string }) {
 
       {/* Outreach drafter */}
       <div className={`${card} p-5 flex flex-col gap-4`}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Outreach Draft</p>
-          <button
-            onClick={generateDraft}
-            disabled={draftLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-black bg-[#0ea5e9] rounded-lg disabled:opacity-50 hover:bg-[#38bdf8]"
-            style={{ transition: 'background 0.15s' }}
-          >
-            {draftLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-            {lead.outreach_draft ? 'Regenerate' : 'Generate Draft'}
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold">
+              {(['professional', 'casual', 'urgent', 'sms'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setOutreachTone(t)}
+                  className={`px-2.5 py-1.5 capitalize ${outreachTone === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
+                  style={{ transition: 'background 0.15s, color 0.15s' }}
+                >{t}</button>
+              ))}
+            </div>
+            <button
+              onClick={generateDraft}
+              disabled={draftLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-black bg-[#0ea5e9] rounded-lg disabled:opacity-50 hover:bg-[#38bdf8]"
+              style={{ transition: 'background 0.15s' }}
+            >
+              {draftLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              {lead.outreach_draft ? 'Regenerate' : 'Generate Draft'}
+            </button>
+          </div>
         </div>
 
         {draftError && (
@@ -340,6 +422,98 @@ export default function LeadDetailClient({ id }: { id: string }) {
           </div>
         ) : (
           <p className="text-sm text-slate-500">No draft yet. Click Generate to create personalized outreach.</p>
+        )}
+      </div>
+      {/* Website Preview Generator */}
+      <div className={`${card} p-5 flex flex-col gap-4`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Website Preview</p>
+              {previewViews != null && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${previewViews > 0 ? 'bg-green-500/15 text-green-400' : 'bg-slate-500/15 text-slate-500'}`}>
+                  {previewViews > 0 ? `${previewViews} view${previewViews > 1 ? 's' : ''}` : 'Not viewed'}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">Generate a tailored site to send as a pitch</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold">
+              {(['modern', 'bold', 'minimal'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setPreviewTemplate(t)}
+                  className={`px-2.5 py-1.5 capitalize ${previewTemplate === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
+                  style={{ transition: 'background 0.15s, color 0.15s' }}
+                >{t}</button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5 px-2 py-1 border border-white/10 rounded-lg">
+              <span className="text-xs text-slate-500">Color</span>
+              <input
+                type="color"
+                value={previewColor}
+                onChange={e => setPreviewColor(e.target.value)}
+                className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
+                title="Brand color override"
+              />
+            </div>
+            <button
+              onClick={generatePreview}
+              disabled={previewLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-black bg-[#0ea5e9] rounded-lg disabled:opacity-50 hover:bg-[#38bdf8]"
+              style={{ transition: 'background 0.15s' }}
+            >
+              {previewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+              {previewUrl ? 'Regenerate' : 'Generate Preview'}
+            </button>
+          </div>
+        </div>
+
+        {previewError && (
+          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            {previewError}
+          </div>
+        )}
+
+        {previewUrl && (
+          <div className="flex flex-col gap-3">
+            <div className="p-3 bg-white/3 border border-white/10 rounded-xl">
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0ea5e9] hover:underline flex items-center gap-1.5 break-all">
+                <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                {previewUrl}
+              </a>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => { navigator.clipboard.writeText(previewUrl) }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-white/10 rounded-lg text-slate-400 hover:text-white hover:border-white/30"
+                style={{ transition: 'color 0.15s, border-color 0.15s' }}
+              >
+                <Copy className="w-3.5 h-3.5" /> Copy Link
+              </button>
+              <a
+                href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`We built a free website preview for ${lead.business_name}`)}&body=${encodeURIComponent(`Hi,\n\nI put together a free website preview for ${lead.business_name}. Take a look:\n\n${previewUrl}\n\nLet me know what you think — happy to make changes or hop on a quick call.\n\n— Fast Websites`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0ea5e9] text-black rounded-lg hover:bg-[#38bdf8]"
+                style={{ transition: 'background 0.15s' }}
+              >
+                <Send className="w-3.5 h-3.5" /> Send via Gmail
+              </a>
+            </div>
+            {!lead.email && (
+              <input
+                type="email"
+                value={manualEmail}
+                onChange={e => setManualEmail(e.target.value)}
+                placeholder="No email found — enter one to send"
+                className={inputCls}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

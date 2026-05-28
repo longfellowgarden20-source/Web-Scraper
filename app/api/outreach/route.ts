@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { id } = body
+  const { id, tone = 'professional' } = body
 
   if (!id) return NextResponse.json({ error: 'Missing lead id' }, { status: 400 })
 
@@ -24,6 +24,14 @@ export async function POST(req: NextRequest) {
     ? `They have ${lead.google_review_count} Google reviews with a ${lead.google_rating} star rating.`
     : ''
 
+  const toneInstructions: Record<string, string> = {
+    professional: 'Write in a professional, respectful tone. Be clear and concise. End with a soft call to action. 3-5 sentences max.',
+    casual: 'Write in a friendly, conversational tone — like a fellow local business owner. Be relaxed and approachable. End with a low-pressure invitation to chat. 3-5 sentences max.',
+    urgent: 'Write with a sense of urgency. Highlight what they are losing by not having a strong web presence. Be direct and confident. End with a clear, time-sensitive call to action. 3-5 sentences max.',
+    sms: 'Write as a SHORT text message — max 2 sentences, 160 characters ideal. Casual, friendly, gets straight to the point. Include a question or soft CTA at the end. No sign-off needed beyond "- Fast Websites".',
+  }
+  const toneGuide = toneInstructions[tone] ?? toneInstructions.professional
+
   const prompt = `You are writing a cold outreach message for a web design agency called Fast Websites (fastwebsitesagency.com).
 
 Business details:
@@ -34,7 +42,7 @@ Business details:
 - ${sourceInfo}
 ${reviewInfo ? `- ${reviewInfo}` : ''}
 
-Write a short, human-sounding cold outreach message. 3-5 sentences max. Be direct and specific about why you're reaching out. Reference their business type and web situation. End with a soft call to action. Do not use generic filler phrases. Do not mention the score number. Sign off as "Fast Websites team". Add a final line: "Reply STOP to opt out of future messages."`
+${toneGuide} Be specific about why you're reaching out. Reference their business type and web situation. Do not use generic filler phrases. Do not mention the score number.${tone !== 'sms' ? ' Sign off as "Fast Websites team". Add a final line: "Reply STOP to opt out of future messages."' : ''}`
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',

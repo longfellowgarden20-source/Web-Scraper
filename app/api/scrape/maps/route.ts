@@ -38,13 +38,13 @@ async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
   return data.result ?? null
 }
 
-async function scoreWebPresence(website: string | undefined): Promise<number> {
-  if (!website) return 10
+async function scoreWebPresence(website: string | undefined): Promise<{ score: number; reasons: string[] }> {
+  if (!website) return { score: 10, reasons: ['No website'] }
 
   let score = 2
+  const reasons: string[] = []
 
-  // No HTTPS
-  if (!website.startsWith('https://')) score += 2
+  if (!website.startsWith('https://')) { score += 2; reasons.push('No HTTPS') }
 
   try {
     const controller = new AbortController()
@@ -59,34 +59,29 @@ async function scoreWebPresence(website: string | undefined): Promise<number> {
     const loadTime = Date.now() - start
     clearTimeout(timeout)
 
-    // Site down or error
-    if (!res.ok) { score += 4 }
+    if (!res.ok) { score += 4; reasons.push('Site down or returning errors') }
 
     const html = await res.text()
 
-    // Slow load (over 4 seconds)
-    if (loadTime > 4000) score += 1
+    if (loadTime > 4000) { score += 1; reasons.push(`Slow load (${(loadTime / 1000).toFixed(1)}s)`) }
 
-    // No viewport meta = not mobile friendly
-    if (!html.includes('viewport')) score += 2
+    if (!html.includes('viewport')) { score += 2; reasons.push('Not mobile-friendly') }
 
-    // Outdated/cheap CMS detection
-    if (html.includes('wp-content') || html.includes('wp-includes')) score += 1 // WordPress (not bad, but common)
-    if (html.includes('wix.com') || html.includes('wixstatic')) score += 2
-    if (html.includes('squarespace') || html.includes('squarespace.com')) score += 1
-    if (html.includes('weebly.com') || html.includes('weeblysite')) score += 2
-    if (html.includes('godaddysites') || html.includes('godaddy')) score += 2
-    if (html.includes('vistasite') || html.includes('vista.com')) score += 2
+    if (html.includes('wp-content') || html.includes('wp-includes')) { score += 1; reasons.push('WordPress') }
+    if (html.includes('wix.com') || html.includes('wixstatic')) { score += 2; reasons.push('Wix site') }
+    if (html.includes('squarespace') || html.includes('squarespace.com')) { score += 1; reasons.push('Squarespace') }
+    if (html.includes('weebly.com') || html.includes('weeblysite')) { score += 2; reasons.push('Weebly site') }
+    if (html.includes('godaddysites') || html.includes('godaddy')) { score += 2; reasons.push('GoDaddy builder') }
+    if (html.includes('vistasite') || html.includes('vista.com')) { score += 2; reasons.push('Vistaprint site') }
 
-    // No contact info visible
-    if (!html.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) && !html.includes('contact')) score += 1
+    if (!html.match(/\d{3}[-.\s]\d{3}[-.\s]\d{4}/) && !html.includes('contact')) { score += 1; reasons.push('No visible contact info') }
 
   } catch {
-    // Site unreachable
     score += 5
+    reasons.push('Site unreachable')
   }
 
-  return Math.min(score, 10)
+  return { score: Math.min(score, 10), reasons }
 }
 
 async function enrichFromWebsite(website: string | undefined): Promise<Enrichment> {
@@ -197,11 +192,11 @@ export async function POST(req: NextRequest) {
       const place = await getPlaceDetails(placeId)
       if (!place) continue
 
-      const score = await scoreWebPresence(place.website)
-      if (score < 4) continue
+      const { score: rawScore, reasons: scoreReasons } = await scoreWebPresence(place.website)
+      if (rawScore < 4) continue
 
       const enrichment = await enrichFromWebsite(place.website)
-      const priority = calcPriority(score, place.user_ratings_total)
+      const priority = calcPriority(rawScore, place.user_ratings_total)
 
       const lead = {
         source: 'google_maps',
@@ -218,6 +213,19 @@ export async function POST(req: NextRequest) {
         email: enrichment.email,
         instagram: enrichment.instagram,
         facebook: enrichment.facebook,
+        score_reasons: scoreReasons,
+      }
+
+      // Skip if phone already exists under a different place_id
+      if (lead.phone) {
+        const { data: existing } = await getSupabaseAdmin()
+          .from('leads')
+          .select('id')
+          .eq('phone', lead.phone)
+          .neq('maps_place_id', place.place_id)
+          .limit(1)
+          .single()
+        if (existing) continue
       }
 
       const { error } = await getSupabaseAdmin()

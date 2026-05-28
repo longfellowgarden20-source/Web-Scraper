@@ -26,6 +26,7 @@ type Lead = {
   google_review_count: number | null
   starred: boolean | null
   follow_up_date: string | null
+  called: boolean | null
 }
 
 type SortKey = 'business_name' | 'score' | 'city' | 'created_at' | 'status'
@@ -52,6 +53,11 @@ function statusBadge(s: Lead['status']) {
 function scoreBadge(n: number) {
   const color = n >= 8 ? 'bg-red-500/15 text-red-400' : n >= 5 ? 'bg-yellow-500/15 text-yellow-400' : 'bg-slate-500/15 text-slate-400'
   return <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${color}`}>{n}/10</span>
+}
+
+function isStale(created_at: string, status: string): boolean {
+  if (status !== 'new') return false
+  return (Date.now() - new Date(created_at).getTime()) > 7 * 24 * 60 * 60 * 1000
 }
 
 export default function LeadsClient() {
@@ -263,6 +269,20 @@ export default function LeadsClient() {
   const mapsCount = leads.filter(l => l.source === 'google_maps').length
   const redditCount = leads.filter(l => l.source === 'reddit').length
 
+  // Category performance: top 5 categories by conversion rate
+  const catMap: Record<string, { total: number; converted: number }> = {}
+  for (const l of leads) {
+    const cat = l.category?.toLowerCase().split(' ')[0] ?? 'other'
+    if (!catMap[cat]) catMap[cat] = { total: 0, converted: 0 }
+    catMap[cat].total++
+    if (l.status === 'converted') catMap[cat].converted++
+  }
+  const categoryStats = Object.entries(catMap)
+    .filter(([, v]) => v.total >= 2)
+    .map(([cat, v]) => ({ cat, total: v.total, converted: v.converted, rate: v.total > 0 ? Math.round((v.converted / v.total) * 100) : 0 }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 6)
+
   // Follow-ups due today
   const today = new Date().toISOString().split('T')[0]
   const followUpsDue = leads.filter(l => l.follow_up_date && l.follow_up_date <= today)
@@ -346,6 +366,26 @@ export default function LeadsClient() {
           </div>
         ))}
       </div>
+
+      {/* Category performance */}
+      {categoryStats.length > 0 && (
+        <div className={`${card} p-4`}>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Top Categories</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {categoryStats.map(({ cat, total, converted, rate }) => (
+              <div key={cat} className="flex items-center justify-between px-3 py-2 bg-white/3 rounded-lg border border-white/8">
+                <div>
+                  <p className="text-xs font-semibold text-white capitalize">{cat}</p>
+                  <p className="text-xs text-slate-500">{total} leads</p>
+                </div>
+                <span className={`text-xs font-bold ${converted > 0 ? 'text-green-400' : 'text-slate-600'}`}>
+                  {converted > 0 ? `${rate}%` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Promising Leads */}
       {leads.some(l => l.starred) && (
@@ -478,7 +518,12 @@ export default function LeadsClient() {
                     </td>
                     <td className="px-4 py-3">
                       <div>
-                        <span className="font-medium text-white">{lead.business_name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-white">{lead.business_name}</span>
+                          {isStale(lead.created_at, lead.status) && (
+                            <span title="New lead — no action in 7+ days" className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
+                          )}
+                        </div>
                         {lead.website && (
                           <a href={lead.website} target="_blank" rel="noopener noreferrer" className="block text-xs text-slate-500 hover:text-[#0ea5e9] truncate max-w-[180px]" style={{ transition: 'color 0.15s' }}>
                             {lead.website.replace(/^https?:\/\//, '')}
@@ -548,6 +593,18 @@ export default function LeadsClient() {
                           style={{ transition: 'color 0.15s' }}
                         >
                           <Bell className={`w-4 h-4 ${lead.follow_up_date ? 'fill-yellow-400' : ''}`} />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const next = !lead.called
+                            setLeads(l => l.map(x => x.id === lead.id ? { ...x, called: next } : x))
+                            await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id, called: next }) })
+                          }}
+                          title={lead.called ? 'Called — click to unmark' : 'Mark as called'}
+                          className={`${lead.called ? 'text-green-400' : 'text-slate-600 hover:text-green-400'}`}
+                          style={{ transition: 'color 0.15s' }}
+                        >
+                          <Phone className={`w-4 h-4 ${lead.called ? 'fill-green-400' : ''}`} />
                         </button>
                         <button
                           onClick={() => generateDraft(lead)}
