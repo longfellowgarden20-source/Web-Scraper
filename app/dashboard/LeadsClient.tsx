@@ -417,8 +417,8 @@ export default function LeadsClient() {
       )}
 
       {/* Filters */}
-      <div className={`${card} p-4 flex flex-col sm:flex-row gap-3`}>
-        <div className="relative flex-1">
+      <div className={`${card} p-4 flex flex-col gap-3`}>
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             value={search}
@@ -427,18 +427,20 @@ export default function LeadsClient() {
             className={`${input} w-full pl-9`}
           />
         </div>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={select}>
-          {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-        </select>
-        <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className={select}>
-          {SOURCES.map(s => <option key={s} value={s}>{s === 'all' ? 'All sources' : s === 'google_maps' ? 'Google Maps' : 'Reddit'}</option>)}
-        </select>
-        <select value={scoreFilter} onChange={e => setScoreFilter(e.target.value)} className={select}>
-          <option value="all">All scores</option>
-          <option value="high">High (8–10)</option>
-          <option value="mid">Mid (5–7)</option>
-          <option value="low">Low (1–4)</option>
-        </select>
+        <div className="grid grid-cols-3 gap-2">
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`${select} w-full`}>
+            {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+          </select>
+          <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className={`${select} w-full`}>
+            {SOURCES.map(s => <option key={s} value={s}>{s === 'all' ? 'All sources' : s === 'google_maps' ? 'Maps' : 'Reddit'}</option>)}
+          </select>
+          <select value={scoreFilter} onChange={e => setScoreFilter(e.target.value)} className={`${select} w-full`}>
+            <option value="all">All scores</option>
+            <option value="high">High (8–10)</option>
+            <option value="mid">Mid (5–7)</option>
+            <option value="low">Low (1–4)</option>
+          </select>
+        </div>
       </div>
 
       {/* Bulk action bar */}
@@ -486,175 +488,184 @@ export default function LeadsClient() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table — desktop */}
       {view === 'table' && <div className={`${card} overflow-hidden`}>
         {loading ? (
           <div className="flex items-center justify-center py-20 text-slate-500 gap-2">
             <Loader2 className="w-5 h-5 animate-spin" /> Loading leads...
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="px-4 py-3 w-8">
-                    <input type="checkbox" checked={selected.size === sorted.length && sorted.length > 0} onChange={toggleSelectAll} className="accent-[#0ea5e9] cursor-pointer" />
-                  </th>
-                  <th className="px-4 py-3 text-left"><SortBtn k="business_name">Business</SortBtn></th>
-                  <th className="px-4 py-3 text-left"><SortBtn k="city">City</SortBtn></th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Reviews</th>
-                  <th className="px-4 py-3 text-left"><SortBtn k="score">Score</SortBtn></th>
-                  <th className="px-4 py-3 text-left"><SortBtn k="status">Status</SortBtn></th>
-                  <th className="px-4 py-3 w-8"></th>
-                  <th className="px-4 py-3 w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {sorted.map(lead => (
-                  <tr key={lead.id} className={`hover:bg-white/3 ${selected.has(lead.id) ? 'bg-[#0ea5e9]/5' : ''}`} style={{ transition: 'background 0.1s' }}>
-                    <td className="px-4 py-3">
-                      <input type="checkbox" checked={selected.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="accent-[#0ea5e9] cursor-pointer" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium text-white">{lead.business_name}</span>
-                          {isStale(lead.created_at, lead.status) && (
-                            <span title="New lead — no action in 7+ days" className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="px-4 py-3 w-8">
+                      <input type="checkbox" checked={selected.size === sorted.length && sorted.length > 0} onChange={toggleSelectAll} className="accent-[#0ea5e9] cursor-pointer" />
+                    </th>
+                    <th className="px-4 py-3 text-left"><SortBtn k="business_name">Business</SortBtn></th>
+                    <th className="px-4 py-3 text-left"><SortBtn k="city">City</SortBtn></th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Reviews</th>
+                    <th className="px-4 py-3 text-left"><SortBtn k="score">Score</SortBtn></th>
+                    <th className="px-4 py-3 text-left"><SortBtn k="status">Status</SortBtn></th>
+                    <th className="px-4 py-3 w-8"></th>
+                    <th className="px-4 py-3 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {sorted.map(lead => (
+                    <tr key={lead.id} className={`hover:bg-white/3 ${selected.has(lead.id) ? 'bg-[#0ea5e9]/5' : ''}`} style={{ transition: 'background 0.1s' }}>
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={selected.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="accent-[#0ea5e9] cursor-pointer" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-white">{lead.business_name}</span>
+                            {isStale(lead.created_at, lead.status) && (
+                              <span title="New lead — no action in 7+ days" className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
+                            )}
+                          </div>
+                          {lead.website && (
+                            <a href={lead.website} target="_blank" rel="noopener noreferrer" className="block text-xs text-slate-500 hover:text-[#0ea5e9] truncate max-w-[180px]" style={{ transition: 'color 0.15s' }}>
+                              {lead.website.replace(/^https?:\/\//, '')}
+                            </a>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">{lead.city || '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {lead.email && <a href={`mailto:${lead.email}`} title={lead.email} className="text-[#0ea5e9] hover:text-white" style={{ transition: 'color 0.15s' }}><Mail className="w-3.5 h-3.5" /></a>}
+                          {lead.instagram && <a href={lead.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-pink-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>IG</a>}
+                          {lead.facebook && <a href={lead.facebook} target="_blank" rel="noopener noreferrer" title="Facebook" className="text-blue-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>FB</a>}
+                          {!lead.email && !lead.instagram && !lead.facebook && <span className="text-slate-600 text-xs">—</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {lead.google_review_count != null ? (
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-yellow-400" />
+                            <span className="text-xs text-white tabular-nums">{lead.google_rating?.toFixed(1)}</span>
+                            <span className="text-xs text-slate-500">({lead.google_review_count})</span>
+                          </div>
+                        ) : <span className="text-slate-600 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">{scoreBadge(lead.score)}</td>
+                      <td className="px-4 py-3">
+                        <select value={lead.status} onChange={e => updateStatus(lead.id, e.target.value)} disabled={updatingId === lead.id} className="bg-transparent text-xs font-semibold border-none outline-none cursor-pointer" style={{ color: 'inherit' }}>
+                          {['new', 'contacted', 'replied', 'converted', 'passed'].map(s => (
+                            <option key={s} value={s} className="bg-[#0a0f1a]">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 text-xs">{new Date(lead.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => toggleStar(lead)} title={lead.starred ? 'Remove' : 'Star'} className={`${lead.starred ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`} style={{ transition: 'color 0.15s' }}>
+                            <Star className={`w-4 h-4 ${lead.starred ? 'fill-yellow-400' : ''}`} />
+                          </button>
+                          <button onClick={() => { setFollowUpId(lead.id); setFollowUpDate(lead.follow_up_date ?? '') }} title="Follow-up" className={`${lead.follow_up_date ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`} style={{ transition: 'color 0.15s' }}>
+                            <Bell className={`w-4 h-4 ${lead.follow_up_date ? 'fill-yellow-400' : ''}`} />
+                          </button>
+                          <button onClick={async () => { const next = !lead.called; setLeads(l => l.map(x => x.id === lead.id ? { ...x, called: next } : x)); await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id, called: next }) }) }} title={lead.called ? 'Called' : 'Mark called'} className={`${lead.called ? 'text-green-400' : 'text-slate-600 hover:text-green-400'}`} style={{ transition: 'color 0.15s' }}>
+                            <Phone className={`w-4 h-4 ${lead.called ? 'fill-green-400' : ''}`} />
+                          </button>
+                          <button onClick={() => generateDraft(lead)} disabled={generatingId === lead.id} title={lead.outreach_draft ? 'Regenerate' : 'Generate draft'} className={`${lead.outreach_draft ? 'text-green-400' : 'text-slate-600 hover:text-[#0ea5e9]'} disabled:opacity-40`} style={{ transition: 'color 0.15s' }}>
+                            {generatingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                          </button>
+                          {lead.outreach_draft && lead.email && (
+                            <a href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft)}`} target="_blank" rel="noopener noreferrer" title="Send via Gmail" className="text-slate-600 hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>
+                              <Send className="w-4 h-4" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/leads/${lead.id}`} className="px-2.5 py-1 text-xs text-[#0ea5e9] border border-[#0ea5e9]/30 rounded-lg hover:bg-[#0ea5e9]/10" style={{ transition: 'background 0.15s' }}>View</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {sorted.length === 0 && <div className="text-center py-16 text-slate-500 text-sm">No leads found. Run a scrape to find some.</div>}
+            </div>
+
+            {/* Mobile card list */}
+            <div className="md:hidden flex flex-col divide-y divide-white/5">
+              {sorted.length === 0 && <div className="text-center py-16 text-slate-500 text-sm">No leads found. Run a scrape to find some.</div>}
+              {sorted.map(lead => (
+                <div key={lead.id} className={`p-4 flex flex-col gap-3 ${selected.has(lead.id) ? 'bg-[#0ea5e9]/5' : ''}`}>
+                  {/* Top row */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <input type="checkbox" checked={selected.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="accent-[#0ea5e9] cursor-pointer mt-1 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-white text-sm">{lead.business_name}</span>
+                          {isStale(lead.created_at, lead.status) && (
+                            <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{lead.city || '—'} · {lead.category || '—'}</p>
                         {lead.website && (
-                          <a href={lead.website} target="_blank" rel="noopener noreferrer" className="block text-xs text-slate-500 hover:text-[#0ea5e9] truncate max-w-[180px]" style={{ transition: 'color 0.15s' }}>
+                          <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-[#0ea5e9] truncate block max-w-[200px]" style={{ transition: 'color 0.15s' }}>
                             {lead.website.replace(/^https?:\/\//, '')}
                           </a>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{lead.city || '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {lead.email && (
-                          <a href={`mailto:${lead.email}`} title={lead.email} className="text-[#0ea5e9] hover:text-white" style={{ transition: 'color 0.15s' }}>
-                            <Mail className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                        {lead.instagram && (
-                          <a href={lead.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-pink-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>IG</a>
-                        )}
-                        {lead.facebook && (
-                          <a href={lead.facebook} target="_blank" rel="noopener noreferrer" title="Facebook" className="text-blue-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>FB</a>
-                        )}
-                        {!lead.email && !lead.instagram && !lead.facebook && (
-                          <span className="text-slate-600 text-xs">—</span>
-                        )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {scoreBadge(lead.score)}
+                      {statusBadge(lead.status)}
+                    </div>
+                  </div>
+
+                  {/* Middle row — contact + reviews */}
+                  <div className="flex items-center gap-4 text-xs">
+                    {lead.google_review_count != null && (
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 text-yellow-400" />
+                        <span className="text-white tabular-nums">{lead.google_rating?.toFixed(1)}</span>
+                        <span className="text-slate-500">({lead.google_review_count})</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {lead.google_review_count != null ? (
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-400" />
-                          <span className="text-xs text-white tabular-nums">{lead.google_rating?.toFixed(1)}</span>
-                          <span className="text-xs text-slate-500">({lead.google_review_count})</span>
-                        </div>
-                      ) : <span className="text-slate-600 text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3">{scoreBadge(lead.score)}</td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={lead.status}
-                        onChange={e => updateStatus(lead.id, e.target.value)}
-                        disabled={updatingId === lead.id}
-                        className="bg-transparent text-xs font-semibold border-none outline-none cursor-pointer"
-                        style={{ color: 'inherit' }}
-                      >
-                        {['new', 'contacted', 'replied', 'converted', 'passed'].map(s => (
-                          <option key={s} value={s} className="bg-[#0a0f1a]">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">
-                      {new Date(lead.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => toggleStar(lead)}
-                          title={lead.starred ? 'Remove from Promising' : 'Save to Promising'}
-                          className={`${lead.starred ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`}
-                          style={{ transition: 'color 0.15s' }}
-                        >
-                          <Star className={`w-4 h-4 ${lead.starred ? 'fill-yellow-400' : ''}`} />
-                        </button>
-                        <button
-                          onClick={() => { setFollowUpId(lead.id); setFollowUpDate(lead.follow_up_date ?? '') }}
-                          title="Set follow-up reminder"
-                          className={`${lead.follow_up_date ? 'text-yellow-400' : 'text-slate-600 hover:text-yellow-400'}`}
-                          style={{ transition: 'color 0.15s' }}
-                        >
-                          <Bell className={`w-4 h-4 ${lead.follow_up_date ? 'fill-yellow-400' : ''}`} />
-                        </button>
-                        <button
-                          onClick={async () => {
-                            const next = !lead.called
-                            setLeads(l => l.map(x => x.id === lead.id ? { ...x, called: next } : x))
-                            await fetch('/api/leads', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id, called: next }) })
-                          }}
-                          title={lead.called ? 'Called — click to unmark' : 'Mark as called'}
-                          className={`${lead.called ? 'text-green-400' : 'text-slate-600 hover:text-green-400'}`}
-                          style={{ transition: 'color 0.15s' }}
-                        >
-                          <Phone className={`w-4 h-4 ${lead.called ? 'fill-green-400' : ''}`} />
-                        </button>
-                        <button
-                          onClick={() => generateDraft(lead)}
-                          disabled={generatingId === lead.id}
-                          title={lead.outreach_draft ? 'Regenerate draft' : 'Generate outreach draft'}
-                          className={`${lead.outreach_draft ? 'text-green-400' : 'text-slate-600 hover:text-[#0ea5e9]'} disabled:opacity-40`}
-                          style={{ transition: 'color 0.15s' }}
-                        >
-                          {generatingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                        </button>
-                        {lead.outreach_draft && lead.email && (
-                          <a
-                            href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Send via Gmail"
-                            className="text-slate-600 hover:text-[#0ea5e9]"
-                            style={{ transition: 'color 0.15s' }}
-                          >
-                            <Send className="w-4 h-4" />
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className="px-2.5 py-1 text-xs text-[#0ea5e9] border border-[#0ea5e9]/30 rounded-lg hover:bg-[#0ea5e9]/10"
-                        style={{ transition: 'background 0.15s' }}
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {sorted.length === 0 && (
-              <div className="text-center py-16 text-slate-500 text-sm">No leads found. Run a scrape to find some.</div>
-            )}
-          </div>
+                    )}
+                    {lead.email && <a href={`mailto:${lead.email}`} className="text-[#0ea5e9]"><Mail className="w-3.5 h-3.5" /></a>}
+                    {lead.phone && <a href={`tel:${lead.phone}`} className="text-green-400"><Phone className="w-3.5 h-3.5" /></a>}
+                    {lead.instagram && <a href={lead.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-400 font-bold">IG</a>}
+                    {lead.facebook && <a href={lead.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-400 font-bold">FB</a>}
+                  </div>
+
+                  {/* Bottom row — status + actions */}
+                  <div className="flex items-center justify-between gap-2">
+                    <select value={lead.status} onChange={e => updateStatus(lead.id, e.target.value)} disabled={updatingId === lead.id} className="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs font-semibold text-white focus:outline-none cursor-pointer">
+                      {['new', 'contacted', 'replied', 'converted', 'passed'].map(s => (
+                        <option key={s} value={s} className="bg-[#0a0f1a]">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggleStar(lead)} className={`${lead.starred ? 'text-yellow-400' : 'text-slate-600'}`}><Star className={`w-4 h-4 ${lead.starred ? 'fill-yellow-400' : ''}`} /></button>
+                      <button onClick={() => generateDraft(lead)} disabled={generatingId === lead.id} className={`${lead.outreach_draft ? 'text-green-400' : 'text-slate-500'} disabled:opacity-40`}>
+                        {generatingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                      </button>
+                      {lead.outreach_draft && lead.email && (
+                        <a href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft)}`} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>
+                          <Send className="w-4 h-4" />
+                        </a>
+                      )}
+                      <Link href={`/leads/${lead.id}`} className="px-3 py-1.5 text-xs font-semibold text-black rounded-lg" style={{ background: '#0ea5e9' }}>View</Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
         {hasMore && !loading && (
           <div className="flex justify-center p-4 border-t border-white/5">
-            <button
-              onClick={loadMore}
-              disabled={loadingMore}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white border border-white/10 rounded-lg hover:bg-white/5 disabled:opacity-40"
-              style={{ transition: 'color 0.15s, background 0.15s' }}
-            >
+            <button onClick={loadMore} disabled={loadingMore} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white border border-white/10 rounded-lg hover:bg-white/5 disabled:opacity-40" style={{ transition: 'color 0.15s, background 0.15s' }}>
               {loadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : 'Load more leads'}
             </button>
           </div>
