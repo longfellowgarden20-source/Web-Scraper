@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
   const email = lead.email ?? ''
   const googleRating: number | null = lead.google_rating ?? null
   const googleReviewCount: number | null = lead.google_review_count ?? null
+  const mapsPlaceId: string | null = lead.maps_place_id ?? null
 
   const iconSet = getIconSet(category)
 
@@ -185,9 +186,11 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     ]
   },
   "testimonials": [
-    { "quote": "Realistic 1-2 sentence positive review about quality and professionalism", "name": "Common first name + last initial", "location": "${city}${state ? ', ' + state : ''}" },
-    { "quote": "Another realistic review mentioning reliability or value", "name": "Different first name + last initial", "location": "Nearby city name${state ? ', ' + state : ''}" },
-    { "quote": "Third review about communication or results", "name": "Third first name + last initial", "location": "${city}${state ? ', ' + state : ''}" }
+    { "quote": "Write a specific, realistic 1-2 sentence 5-star review from a real customer's perspective. Make it specific to ${category} work — mention a concrete detail like a specific job, problem solved, or result achieved. Sound like a real person, not marketing copy.", "name": "Common local first name + last initial", "location": "${city}${state ? ', ' + state : ''}" },
+    { "quote": "A different realistic review focused on reliability and showing up on time. Mention something specific about the ${category} job — a before/after, a tight deadline, or a tricky situation they handled well.", "name": "Different first name + last initial", "location": "Nearby city name${state ? ', ' + state : ''}" },
+    { "quote": "A third realistic review about value for money or quality. Specific to ${category} — mention a real detail a customer would notice, like how long it took, how clean they left the site, or a specific result.", "name": "Third first name + last initial", "location": "${city}${state ? ', ' + state : ''}" },
+    { "quote": "A fourth review from a repeat customer or someone who referred friends. Mention they've used ${name} more than once or recommended them to a neighbor. Keep it specific to the ${category} work.", "name": "Fourth first name + last initial", "location": "${city}${state ? ', ' + state : ''}" },
+    { "quote": "A fifth review about communication and professionalism. Mention something specific — they got a call back fast, the estimate was clear, or there were no surprise charges on the ${category} job.", "name": "Fifth first name + last initial", "location": "Another nearby city${state ? ', ' + state : ''}" }
   ],
   "faqs": [
     { "question": "How much does [main service] cost in ${city}?", "answer": "2-3 sentences with realistic price range and mention of free quotes" },
@@ -313,6 +316,7 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     seo: generated.seo ?? {},
     googleRating,
     googleReviewCount,
+    mapsPlaceId,
   }
 
   const { data: preview, error: insertError } = await getSupabaseAdmin()
