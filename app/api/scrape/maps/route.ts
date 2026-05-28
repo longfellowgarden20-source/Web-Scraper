@@ -192,6 +192,9 @@ export async function POST(req: NextRequest) {
       const place = await getPlaceDetails(placeId)
       if (!place) continue
 
+      // Skip businesses that have a working website — they're not our target
+      if (place.website) continue
+
       const { score: rawScore, reasons: scoreReasons } = await scoreWebPresence(place.website)
       if (rawScore < 4) continue
 
