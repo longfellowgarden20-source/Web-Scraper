@@ -26,6 +26,9 @@ async function searchPlaces(query: string): Promise<string[]> {
   const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${MAPS_API_KEY}`
   const res = await fetch(url)
   const data = await res.json()
+  if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT' || data.status === 'INVALID_REQUEST') {
+    throw new Error(`Maps API: ${data.status} — ${data.error_message ?? 'no message'}`)
+  }
   if (!data.results) return []
   return (data.results as { place_id: string }[]).slice(0, 20).map(r => r.place_id)
 }
@@ -35,6 +38,9 @@ async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${MAPS_API_KEY}`
   const res = await fetch(url)
   const data = await res.json()
+  if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT' || data.status === 'INVALID_REQUEST') {
+    throw new Error(`Maps API: ${data.status} — ${data.error_message ?? 'no message'}`)
+  }
   return data.result ?? null
 }
 
@@ -196,11 +202,8 @@ export async function POST(req: NextRequest) {
       const place = await getPlaceDetails(placeId)
       if (!place) continue
 
-      // Skip businesses that have a working website — they're not our target
-      if (place.website) continue
-
       const { score: rawScore, reasons: scoreReasons } = await scoreWebPresence(place.website)
-      if (rawScore < 4) continue
+      if (rawScore < 5) continue
 
       const enrichment = await enrichFromWebsite(place.website)
       const priority = calcPriority(rawScore, place.user_ratings_total)

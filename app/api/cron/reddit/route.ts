@@ -9,9 +9,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
+  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.NEXT_PUBLIC_APP_URL
+    ?? 'http://localhost:3000'
 
   const res = await fetch(`${baseUrl}/api/scrape/reddit`, { method: 'POST' })
   const data = await res.json()

@@ -124,3 +124,56 @@ Start here, in this order:
 
 ## Current Status
 Project just created. Nothing built yet.
+
+---
+
+## Website Template — `landscapers-template/`
+
+A fully genericized Next.js service-business website template lives at `./landscapers-template/`. When a lead is ready to receive a prototype site, copy this folder and edit ONE file to produce a complete, re-skinned website.
+
+### The only file Groq needs to touch: `config/business.ts`
+
+Everything customer-facing is in that config — no other file needs editing for a new client:
+
+| Config key | What it changes |
+|---|---|
+| `name`, `shortName`, `phone`, `email`, `domain` | Identity across all pages and metadata |
+| `industry`, `industryLabel`, `proNoun` | All copy that references the service type (e.g. "landscaping" → "cleaning") |
+| `colors.accent` + 7 derivatives | **Full re-skin** — hex values inject as CSS vars, Tailwind picks them up automatically |
+| `logoEmoji` / `logoImagePath` | Nav and footer logo |
+| `hero.*` | Hero headline, subheadline, badge, CTAs, background image |
+| `owner.*` | Owner name, photo, bio paragraphs, years of experience |
+| `services[]` | Feature cards + booking form dropdown (each item: `title`, `description`, `icon`) |
+| `pricing.plans[]` | Pricing cards (name, price string, features list, featured flag) |
+| `serviceArea.*` | City, state, neighborhoods list, nearby cities list |
+| `testimonials[]` | Quote cards on Our Work page |
+| `faqs[]` | FAQ page + homepage preview accordion |
+| `seo.*` | All meta titles, descriptions, keywords, favicon emoji |
+| `supabaseUrl`, `supabaseAnonKey`, `supabaseServiceKey`, `adminPassword` | Booking backend — fill in per client, left blank in template |
+
+### Color re-skin example (full swap in ~10 lines)
+```ts
+colors: {
+  accent:               '#e65c00',  // primary — buttons, badges, links
+  accentDark:           '#bf4d00',  // hover state
+  accentLight:          '#fff4ee',  // light section backgrounds
+  accentBorder:         '#ffd0b0',  // subtle card borders
+  accentFooter:         '#7a2e00',  // footer background
+  accentFooterBorder:   '#9a3d00',
+  accentFooterText:     '#ffd5b5',
+  accentFooterHeading:  '#ffe8d6',
+},
+```
+
+### Icon names for `services[].icon`
+Use any of these Lucide icon names: `Scissors`, `Home`, `Building2`, `Flower2`, `Trees`, `Headphones`, `Wrench`, `Zap`, `Star`, `Shield`, `Clock`, `DollarSign`
+
+### To add more icons
+In `app/components/FeaturesSection.tsx`, import from `lucide-react` and add to `ICON_MAP`.
+
+### Workflow for each new lead
+1. Duplicate `landscapers-template/` → `clients/[business-slug]/`
+2. Edit `config/business.ts` only
+3. Drop client hero image into `public/hero-bg.webp` and owner photo into `public/owner.webp`
+4. Fill in Supabase keys + admin password
+5. `npm install && npm run build` — zero other changes needed

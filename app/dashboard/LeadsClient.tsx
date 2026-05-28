@@ -27,6 +27,7 @@ type Lead = {
   starred: boolean | null
   follow_up_date: string | null
   called: boolean | null
+  score_reasons: string[] | null
 }
 
 type SortKey = 'business_name' | 'score' | 'city' | 'created_at' | 'status'
@@ -60,6 +61,20 @@ function isStale(created_at: string, status: string): boolean {
   return (Date.now() - new Date(created_at).getTime()) > 7 * 24 * 60 * 60 * 1000
 }
 
+function gmailHref(email: string, subject?: string, body?: string) {
+  const isMobile = typeof window !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+  if (isMobile) {
+    const params = new URLSearchParams()
+    if (subject) params.set('subject', subject)
+    if (body) params.set('body', body)
+    return `mailto:${email}${params.toString() ? '?' + params.toString() : ''}`
+  }
+  const params = new URLSearchParams({ view: 'cm', to: email })
+  if (subject) params.set('su', subject)
+  if (body) params.set('body', body)
+  return `https://mail.google.com/mail/?${params.toString()}`
+}
+
 export default function LeadsClient() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,6 +82,7 @@ export default function LeadsClient() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [scoreFilter, setScoreFilter] = useState<string>('all')
+  const [noWebsiteFilter, setNoWebsiteFilter] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -83,8 +99,29 @@ export default function LeadsClient() {
   const [scrapeQuery, setScrapeQuery] = useState('')
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null)
+  const [savedQueries, setSavedQueries] = useState<{ id: string; query: string; last_run: string | null }[]>([])
+  const [showQueries, setShowQueries] = useState(false)
   const [followUpId, setFollowUpId] = useState<string | null>(null)
   const [followUpDate, setFollowUpDate] = useState('')
+
+  const fetchQueries = useCallback(async () => {
+    const res = await fetch('/api/scrape/queries')
+    if (res.ok) setSavedQueries(await res.json())
+  }, [])
+
+  const addQuery = async (q: string) => {
+    await fetch('/api/scrape/queries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q }),
+    })
+    fetchQueries()
+  }
+
+  const deleteQuery = async (id: string) => {
+    await fetch(`/api/scrape/queries?id=${id}`, { method: 'DELETE' })
+    setSavedQueries(qs => qs.filter(q => q.id !== id))
+  }
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
@@ -120,17 +157,16 @@ export default function LeadsClient() {
     setLoadingMore(false)
   }
 
-  useEffect(() => { fetchLeads() }, [fetchLeads])
+  useEffect(() => { fetchLeads(); fetchQueries() }, [fetchLeads, fetchQueries])
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(k); setSortDir('desc') }
   }
 
-  const filtered = scoreFilter === 'all' ? leads
-    : scoreFilter === 'high' ? leads.filter(l => l.score >= 8)
-    : scoreFilter === 'mid' ? leads.filter(l => l.score >= 5 && l.score < 8)
-    : leads.filter(l => l.score < 5)
+  const filtered = leads
+    .filter(l => scoreFilter === 'all' ? true : scoreFilter === 'high' ? l.score >= 8 : scoreFilter === 'mid' ? l.score >= 5 && l.score < 8 : l.score < 5)
+    .filter(l => noWebsiteFilter ? !l.website : true)
 
   const sorted = [...filtered].sort((a, b) => {
     const mul = sortDir === 'asc' ? 1 : -1
@@ -224,14 +260,18 @@ export default function LeadsClient() {
     if (!scrapeQuery.trim()) return
     setScraping(true)
     setScrapeMsg(null)
-    const res = await fetch('/api/scrape/maps', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: scrapeQuery.trim() }),
-    })
+    const q = scrapeQuery.trim()
+    const [res] = await Promise.all([
+      fetch('/api/scrape/maps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      }),
+      addQuery(q),
+    ])
     const data = await res.json()
     setScrapeMsg(res.ok ? `Done — ${data.saved ?? 0} new leads saved` : data.error ?? 'Failed')
-    if (res.ok) fetchLeads()
+    if (res.ok) { fetchLeads(); setScrapeQuery('') }
     setScraping(false)
     setTimeout(() => setScrapeMsg(null), 5000)
   }
@@ -318,20 +358,40 @@ export default function LeadsClient() {
       </div>
 
       {/* On-demand scrape */}
-      <div className={`${card} p-4 flex gap-3 items-center`}>
-        <Search className="w-4 h-4 text-slate-500 shrink-0" />
-        <input
-          value={scrapeQuery}
-          onChange={e => setScrapeQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && scrapeNow()}
-          placeholder="Scrape now — e.g. plumbers in Dallas, restaurants in Miami..."
-          className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none"
-        />
-        {scrapeMsg && <span className={`text-xs shrink-0 ${scrapeMsg.includes('new') ? 'text-green-400' : 'text-red-400'}`}>{scrapeMsg}</span>}
-        <button onClick={scrapeNow} disabled={scraping || !scrapeQuery.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-black rounded-lg disabled:opacity-40 shrink-0" style={{ background: '#0ea5e9', transition: 'opacity 0.15s' }}>
-          {scraping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-          {scraping ? 'Scraping...' : 'Scrape'}
-        </button>
+      <div className={`${card} overflow-hidden`}>
+        <div className="p-4 flex gap-3 items-center">
+          <Search className="w-4 h-4 text-slate-500 shrink-0" />
+          <input
+            value={scrapeQuery}
+            onChange={e => setScrapeQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && scrapeNow()}
+            placeholder="Scrape now — e.g. plumbers in Dallas, restaurants in Miami..."
+            className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none"
+          />
+          {scrapeMsg && <span className={`text-xs shrink-0 ${scrapeMsg.includes('new') ? 'text-green-400' : 'text-red-400'}`}>{scrapeMsg}</span>}
+          <button onClick={scrapeNow} disabled={scraping || !scrapeQuery.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-black rounded-lg disabled:opacity-40 shrink-0" style={{ background: '#0ea5e9', transition: 'opacity 0.15s' }}>
+            {scraping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            {scraping ? 'Scraping...' : 'Scrape'}
+          </button>
+          <button onClick={() => setShowQueries(q => !q)} className="text-xs text-slate-500 hover:text-white shrink-0" style={{ transition: 'color 0.15s' }}>
+            {showQueries ? 'Hide' : `Cron (${savedQueries.length})`}
+          </button>
+        </div>
+        {showQueries && (
+          <div className="border-t border-white/10 px-4 py-3 flex flex-col gap-2">
+            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Cron rotation — runs every 30 min</p>
+            {savedQueries.length === 0 && <p className="text-xs text-slate-600">No queries saved yet. Run a scrape above to add one.</p>}
+            {savedQueries.map(q => (
+              <div key={q.id} className="flex items-center justify-between gap-2">
+                <span className="text-sm text-white">{q.query}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-xs text-slate-600">{q.last_run ? `Last run ${new Date(q.last_run).toLocaleDateString()}` : 'Never run'}</span>
+                  <button onClick={() => deleteQuery(q.id)} className="text-xs text-slate-600 hover:text-red-400" style={{ transition: 'color 0.15s' }}>Remove</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Follow-ups due */}
@@ -441,6 +501,12 @@ export default function LeadsClient() {
             <option value="low">Low (1–4)</option>
           </select>
         </div>
+        <button
+          onClick={() => setNoWebsiteFilter(f => !f)}
+          className={`px-3 py-2 text-sm rounded-lg border font-medium transition-opacity ${noWebsiteFilter ? 'bg-[#0ea5e9]/20 border-[#0ea5e9]/60 text-[#0ea5e9]' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
+        >
+          No website
+        </button>
       </div>
 
       {/* Bulk action bar */}
@@ -533,12 +599,19 @@ export default function LeadsClient() {
                               {lead.website.replace(/^https?:\/\//, '')}
                             </a>
                           )}
+                          {lead.score_reasons && lead.score_reasons.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {lead.score_reasons.slice(0, 3).map(r => (
+                                <span key={r} className="px-1.5 py-0.5 rounded text-xs bg-red-500/10 text-red-400">{r}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-xs">{lead.city || '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {lead.email && <a href={`mailto:${lead.email}`} title={lead.email} className="text-[#0ea5e9] hover:text-white" style={{ transition: 'color 0.15s' }}><Mail className="w-3.5 h-3.5" /></a>}
+                          {lead.email && <a href={gmailHref(lead.email)} target="_blank" rel="noopener noreferrer" title={lead.email} className="text-[#0ea5e9] hover:text-white" style={{ transition: 'color 0.15s' }}><Mail className="w-3.5 h-3.5" /></a>}
                           {lead.instagram && <a href={lead.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-pink-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>IG</a>}
                           {lead.facebook && <a href={lead.facebook} target="_blank" rel="noopener noreferrer" title="Facebook" className="text-blue-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>FB</a>}
                           {!lead.email && !lead.instagram && !lead.facebook && <span className="text-slate-600 text-xs">—</span>}
@@ -577,7 +650,7 @@ export default function LeadsClient() {
                             {generatingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                           </button>
                           {lead.outreach_draft && lead.email && (
-                            <a href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft)}`} target="_blank" rel="noopener noreferrer" title="Send via Gmail" className="text-slate-600 hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>
+                            <a href={gmailHref(lead.email, `Quick question about ${lead.business_name}'s website`, lead.outreach_draft)} target="_blank" rel="noopener noreferrer" title="Send via Gmail" className="text-slate-600 hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>
                               <Send className="w-4 h-4" />
                             </a>
                           )}
@@ -615,6 +688,13 @@ export default function LeadsClient() {
                             {lead.website.replace(/^https?:\/\//, '')}
                           </a>
                         )}
+                        {lead.score_reasons && lead.score_reasons.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {lead.score_reasons.slice(0, 3).map(r => (
+                              <span key={r} className="px-1.5 py-0.5 rounded text-xs bg-red-500/10 text-red-400">{r}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -632,7 +712,7 @@ export default function LeadsClient() {
                         <span className="text-slate-500">({lead.google_review_count})</span>
                       </div>
                     )}
-                    {lead.email && <a href={`mailto:${lead.email}`} className="text-[#0ea5e9]"><Mail className="w-3.5 h-3.5" /></a>}
+                    {lead.email && <a href={gmailHref(lead.email)} target="_blank" rel="noopener noreferrer" className="text-[#0ea5e9]"><Mail className="w-3.5 h-3.5" /></a>}
                     {lead.phone && <a href={`tel:${lead.phone}`} className="text-green-400"><Phone className="w-3.5 h-3.5" /></a>}
                     {lead.instagram && <a href={lead.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-400 font-bold">IG</a>}
                     {lead.facebook && <a href={lead.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-400 font-bold">FB</a>}
@@ -651,7 +731,7 @@ export default function LeadsClient() {
                         {generatingId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                       </button>
                       {lead.outreach_draft && lead.email && (
-                        <a href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft)}`} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>
+                        <a href={gmailHref(lead.email, `Quick question about ${lead.business_name}'s website`, lead.outreach_draft)} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>
                           <Send className="w-4 h-4" />
                         </a>
                       )}
