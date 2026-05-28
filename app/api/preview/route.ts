@@ -97,6 +97,8 @@ export async function POST(req: NextRequest) {
   const name = lead.business_name
   const phone = lead.phone ?? ''
   const email = lead.email ?? ''
+  const googleRating: number | null = lead.google_rating ?? null
+  const googleReviewCount: number | null = lead.google_review_count ?? null
 
   const iconSet = getIconSet(category)
 
@@ -127,7 +129,7 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     "subheadline": "2 sentences: what they do + why customers trust them. Mention city.",
     "ctaPrimary": "3-4 word CTA button text",
     "ctaSecondary": "View Our Services",
-    "socialProof": "⭐ 4.9/5 from 150+ customers",
+    "socialProof": "${googleRating ? `⭐ ${googleRating}/5 from ${googleReviewCount ?? 'many'} Google reviews` : '⭐ 4.9/5 from 150+ customers'}",
     "socialProof2": "Trusted by homeowners and local businesses in ${city}"
   },
   "services": [
@@ -309,6 +311,8 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     testimonials: generated.testimonials ?? [],
     faqs: generated.faqs ?? [],
     seo: generated.seo ?? {},
+    googleRating,
+    googleReviewCount,
   }
 
   const { data: preview, error: insertError } = await getSupabaseAdmin()
