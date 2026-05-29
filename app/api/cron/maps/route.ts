@@ -252,7 +252,7 @@ export async function GET(req: NextRequest) {
         const priority = calcPriority(score, place.user_ratings_total)
         const [enrichment, draft] = await Promise.all([
           place.website ? enrichFromWebsite(place.website) : Promise.resolve({ email: null, instagram: null, facebook: null }),
-          priority >= 9 ? generateDraft(place) : Promise.resolve(null),
+          priority >= 8 ? generateDraft(place) : Promise.resolve(null),
         ])
 
         const update: Record<string, unknown> = {}

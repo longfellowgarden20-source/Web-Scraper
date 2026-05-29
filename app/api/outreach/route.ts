@@ -45,36 +45,29 @@ ${reviewInfo ? `- ${reviewInfo}` : ''}
 
 ${toneGuide} Be specific about why you're reaching out. Reference their business type and web situation. Do not use generic filler phrases. Do not mention the score number.${tone !== 'sms' && tone !== 'instagram' ? ' Sign off as "Fast Websites team". Add a final line: "Reply STOP to opt out of future messages."' : ''}`
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-
-  const text = await res.text()
-
-  if (!res.ok) {
-    return NextResponse.json({ error: `Groq error ${res.status}: ${text}` }, { status: 500 })
+  const groqKeys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
+  let draft = ''
+  for (const key of groqKeys) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 300,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+      const data = await res.json()
+      if (data?.error?.code === 'rate_limit_exceeded') continue
+      const content = data.choices?.[0]?.message?.content?.trim()
+      if (content) { draft = content; break }
+    } catch { continue }
   }
-
-  let data: { choices?: { message?: { content?: string } }[] }
-  try {
-    data = JSON.parse(text)
-  } catch {
-    return NextResponse.json({ error: `Invalid JSON from Groq: ${text.slice(0, 200)}` }, { status: 500 })
-  }
-
-  const draft = data.choices?.[0]?.message?.content?.trim()
-  if (!draft) return NextResponse.json({ error: 'Empty response from Groq' }, { status: 500 })
+  if (!draft) return NextResponse.json({ error: 'All Groq keys rate limited or failed' }, { status: 500 })
 
   await getSupabaseAdmin().from('leads').update({ outreach_draft: draft }).eq('id', id)
+
 
   return NextResponse.json({ draft })
 }
