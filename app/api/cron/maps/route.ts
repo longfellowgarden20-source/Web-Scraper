@@ -30,12 +30,16 @@ async function searchPlaces(query: string): Promise<PlaceResult[]> {
 async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
   const fields = 'name,website,formatted_phone_number,place_id,types,formatted_address,rating,user_ratings_total'
   const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${MAPS_API_KEY}`
-  const res = await fetch(url)
-  const data = await res.json()
-  if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT' || data.status === 'INVALID_REQUEST') {
-    throw new Error(`Maps API: ${data.status} — ${data.error_message ?? 'no message'}`)
+  try {
+    const res = await fetch(url)
+    const data = await res.json()
+    if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT' || data.status === 'INVALID_REQUEST') {
+      return null
+    }
+    return data.result ?? null
+  } catch {
+    return null
   }
-  return data.result ?? null
 }
 
 async function generateDraft(place: PlaceResult): Promise<string | null> {
@@ -65,8 +69,11 @@ Write a short casual outreach message. Rules:
 - No sign-off needed`
 
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
@@ -74,6 +81,7 @@ Write a short casual outreach message. Rules:
         messages: [{ role: 'user', content: prompt }],
       }),
     })
+    clearTimeout(timeout)
     const data = await res.json()
     return data.choices?.[0]?.message?.content?.trim() ?? null
   } catch {
@@ -243,7 +251,7 @@ export async function GET(req: NextRequest) {
 
   await getSupabaseAdmin()
     .from('leads')
-    .upsert(upsertRows, { onConflict: 'maps_place_id', ignoreDuplicates: true })
+    .upsert(upsertRows, { onConflict: 'maps_place_id', ignoreDuplicates: false })
 
   const saved = upsertRows.map(r => r.business_name)
 
