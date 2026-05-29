@@ -76,7 +76,7 @@ Write a short casual outreach message. Rules:
       signal: controller.signal,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'llama-3.1-8b-instant',
         max_tokens: 150,
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -259,9 +259,11 @@ export async function GET(req: NextRequest) {
   await Promise.all(
     validPlaces.map(async place => {
       try {
+        const { score } = fastScore(place)
+        const priority = calcPriority(score, place.user_ratings_total)
         const [enrichment, draft] = await Promise.all([
           place.website ? enrichFromWebsite(place.website) : Promise.resolve({ email: null, instagram: null, facebook: null }),
-          generateDraft(place),
+          priority >= 8 ? generateDraft(place) : Promise.resolve(null),
         ])
 
         const update: Record<string, unknown> = {}
