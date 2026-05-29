@@ -140,7 +140,7 @@ Business details:
 
 Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text, no trailing commas):
 {
-  "accentHex": "A single hex color (#rrggbb) that fits this industry and looks great as a brand color. Must have contrast ratio ≥ 4.5:1 against white (#ffffff) so text remains readable. Examples by industry: landscaping=#16a34a, plumbing=#1d4ed8, electrical=#b45309, cleaning=#0284c7, roofing=#92400e, salon=#9333ea, gym=#ea580c, dental=#0891b2, restaurant=#dc2626. Pick something fitting but feel free to vary the exact shade — avoid pure #000000 or #ffffff.",
+  "accentHex": "A single hex color (#rrggbb) that fits this industry and looks great as a brand color. Must have contrast ratio ≥ 4.5:1 against white (#ffffff) so text remains readable. Examples by industry: landscaping=#16a34a, plumbing=#1d4ed8, electrical=#b45309, cleaning=#0284c7, roofing=#92400e, salon=#9333ea, gym=#ea580c, dental=#0891b2, restaurant=#dc2626, pet grooming=#92400e. Pick something fitting but feel free to vary the exact shade — avoid pure #000000 or #ffffff.",
   "shortName": "2-3 word short business name for nav/footer",
   "tagline": "one catchy sentence tagline mentioning the city, 10-16 words",
   "industry": "${category.toLowerCase().split(' ')[0]}",
