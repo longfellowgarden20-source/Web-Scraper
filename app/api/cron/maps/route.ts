@@ -51,22 +51,7 @@ async function generateDraft(place: PlaceResult): Promise<string | null> {
     ? `They have ${place.user_ratings_total} Google reviews and a ${place.rating} star rating — people clearly find them, but their web presence doesn't match.`
     : ''
 
-  const prompt = `You write cold outreach for a web design agency called Fast Websites (fastwebsitesagency.com).
-
-Business: ${place.name}
-Location: ${place.formatted_address ?? 'California'}
-Type: ${place.types?.slice(0, 2).join(', ') ?? 'local business'}
-Web situation: ${websiteInfo}
-${reviewInfo}
-
-Write a short casual outreach message. Rules:
-- 2-3 sentences max
-- Sound like a real person texting, not a marketer
-- Mention something specific about their situation (no website, or bad website)
-- Don't use their name or act like you know them personally
-- No fluff like "I hope this finds you well" or "I came across your business"
-- End with a simple low-pressure question
-- No sign-off needed`
+  const prompt = `Cold outreach for Fast Websites agency. Business: ${place.name}, ${place.formatted_address?.split(',')[1]?.trim() ?? 'CA'}. ${websiteInfo}${reviewInfo ? ' ' + reviewInfo : ''} Write 2 casual sentences like a real person texting. Mention their specific web situation. End with a soft question. No intro, no sign-off.`
 
   const keys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2].filter(Boolean) as string[]
   for (const key of keys) {
@@ -267,7 +252,7 @@ export async function GET(req: NextRequest) {
         const priority = calcPriority(score, place.user_ratings_total)
         const [enrichment, draft] = await Promise.all([
           place.website ? enrichFromWebsite(place.website) : Promise.resolve({ email: null, instagram: null, facebook: null }),
-          priority >= 8 ? generateDraft(place) : Promise.resolve(null),
+          priority >= 9 ? generateDraft(place) : Promise.resolve(null),
         ])
 
         const update: Record<string, unknown> = {}
