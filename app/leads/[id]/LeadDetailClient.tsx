@@ -52,7 +52,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [savingNotes, setSavingNotes] = useState(false)
   const [status, setStatus] = useState('')
   const [manualEmail, setManualEmail] = useState('')
-  const [outreachTone, setOutreachTone] = useState<'professional' | 'casual' | 'urgent' | 'sms'>('professional')
+  const [outreachTone, setOutreachTone] = useState<'professional' | 'casual' | 'urgent' | 'sms' | 'instagram'>('professional')
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
@@ -513,7 +513,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Outreach Draft</p>
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold">
-              {(['professional', 'casual', 'urgent', 'sms'] as const).map(t => (
+              {(['professional', 'casual', 'urgent', 'sms', 'instagram'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setOutreachTone(t)}
@@ -554,15 +554,30 @@ export default function LeadDetailClient({ id }: { id: string }) {
               >
                 {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
               </button>
-              <a
-                href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft ?? '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0ea5e9] text-black rounded-lg hover:bg-[#38bdf8]"
-                style={{ transition: 'background 0.15s' }}
-              >
-                <Send className="w-3.5 h-3.5" /> Send via Gmail
-              </a>
+              {outreachTone === 'instagram' && lead.instagram ? (
+                <a
+                  href={lead.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => { if (lead.outreach_draft) navigator.clipboard.writeText(lead.outreach_draft) }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-pink-500/20 border border-pink-500/30 text-pink-400 rounded-lg hover:bg-pink-500/30"
+                  style={{ transition: 'background 0.15s' }}
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy & Open Instagram
+                </a>
+              ) : outreachTone === 'instagram' && !lead.instagram ? (
+                <span className="text-xs text-slate-600">No Instagram found for this lead</span>
+              ) : (
+                <a
+                  href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft ?? '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0ea5e9] text-black rounded-lg hover:bg-[#38bdf8]"
+                  style={{ transition: 'background 0.15s' }}
+                >
+                  <Send className="w-3.5 h-3.5" /> Send via Gmail
+                </a>
+              )}
             </div>
             {!lead.email && (
               <input
