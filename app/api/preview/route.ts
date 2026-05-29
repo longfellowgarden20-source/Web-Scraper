@@ -11,6 +11,26 @@ function darkenHex(hex: string): string {
   return `#${d(r)}${d(g)}${d(b)}`
 }
 
+// WCAG relative luminance
+function luminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255
+  const g = parseInt(hex.slice(3, 5), 16) / 255
+  const b = parseInt(hex.slice(5, 7), 16) / 255
+  const lin = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+}
+
+// Contrast ratio against white — if too low, darken until it passes 4.5:1
+function ensureContrastOnWhite(hex: string): string {
+  let current = hex
+  for (let i = 0; i < 10; i++) {
+    const contrast = (1.05) / (luminance(current) + 0.05)
+    if (contrast >= 4.5) return current
+    current = darkenHex(current)
+  }
+  return current
+}
+
 function lightenHex(hex: string, alpha = '10'): string {
   return `${hex}${alpha}`
 }
@@ -285,9 +305,11 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     return match ? match[0] : null
   }
 
-  const rawAccent = (colorOverride && extractHex(colorOverride))
+  const rawAccent = ensureContrastOnWhite(
+    (colorOverride && extractHex(colorOverride))
     ?? extractHex(generated.accentHex)
     ?? '#0ea5e9'
+  )
   const colors = buildColorPalette(rawAccent)
 
   // Build the full business_config merging generated content + real identity fields
