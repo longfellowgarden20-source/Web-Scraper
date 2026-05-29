@@ -68,25 +68,29 @@ Write a short casual outreach message. Rules:
 - End with a simple low-pressure question
 - No sign-off needed`
 
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000)
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        max_tokens: 150,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-    clearTimeout(timeout)
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content?.trim() ?? null
-  } catch {
-    return null
+  const keys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2].filter(Boolean) as string[]
+  for (const key of keys) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          max_tokens: 150,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      })
+      clearTimeout(timeout)
+      const data = await res.json()
+      if (data.error?.code === 'rate_limit_exceeded') continue
+      const result = data.choices?.[0]?.message?.content?.trim()
+      if (result) return result
+    } catch { /* try next key */ }
   }
+  return null
 }
 
 async function enrichFromWebsite(website: string): Promise<{ email: string | null; instagram: string | null; facebook: string | null }> {
