@@ -631,7 +631,19 @@ export default function LeadsClient() {
                           {lead.email && <a href={gmailHref(lead.email)} target="_blank" rel="noopener noreferrer" title={lead.email} className="text-[#0ea5e9] hover:text-white" style={{ transition: 'color 0.15s' }}><Mail className="w-3.5 h-3.5" /></a>}
                           {lead.instagram && <a href={lead.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-pink-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>IG</a>}
                           {lead.facebook && <a href={lead.facebook} target="_blank" rel="noopener noreferrer" title="Facebook" className="text-blue-400 hover:text-white text-xs font-bold" style={{ transition: 'color 0.15s' }}>FB</a>}
-                          {!lead.email && !lead.instagram && !lead.facebook && <span className="text-slate-600 text-xs">—</span>}
+                          {lead.website && !lead.email && !lead.instagram && (
+                            <button
+                              title="Find email & Instagram"
+                              onClick={async () => {
+                                const res = await fetch('/api/leads/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id }) })
+                                const data = await res.json()
+                                if (res.ok) setLeads(l => l.map(x => x.id === lead.id ? { ...x, email: data.email ?? x.email, instagram: data.instagram ?? x.instagram, facebook: data.facebook ?? x.facebook } : x))
+                              }}
+                              className="text-slate-600 hover:text-pink-400 text-xs font-bold"
+                              style={{ transition: 'color 0.15s' }}
+                            >IG?</button>
+                          )}
+                          {!lead.website && !lead.email && !lead.instagram && !lead.facebook && <span className="text-slate-600 text-xs">—</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3">
