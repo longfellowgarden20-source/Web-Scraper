@@ -278,12 +278,16 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
     return NextResponse.json({ error: `Could not parse Groq JSON: ${rawContent.slice(0, 300)}` }, { status: 500 })
   }
 
-  // Build color palette from Groq's chosen accent (or colorOverride if provided)
-  const rawAccent = colorOverride && /^#[0-9a-fA-F]{6}$/.test(colorOverride)
-    ? colorOverride
-    : (typeof generated.accentHex === 'string' && /^#[0-9a-fA-F]{6}$/.test(generated.accentHex)
-        ? generated.accentHex
-        : '#0ea5e9')
+  // Extract hex from Groq's accentHex — it sometimes includes trailing comments like "#16a34a (green)"
+  const extractHex = (val: unknown): string | null => {
+    if (typeof val !== 'string') return null
+    const match = val.match(/#[0-9a-fA-F]{6}/)
+    return match ? match[0] : null
+  }
+
+  const rawAccent = (colorOverride && extractHex(colorOverride))
+    ?? extractHex(generated.accentHex)
+    ?? '#0ea5e9'
   const colors = buildColorPalette(rawAccent)
 
   // Build the full business_config merging generated content + real identity fields
