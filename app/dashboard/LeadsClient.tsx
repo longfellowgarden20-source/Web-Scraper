@@ -101,6 +101,7 @@ export default function LeadsClient() {
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState<string | null>(null)
   const [savedQueries, setSavedQueries] = useState<{ id: string; query: string; last_run: string | null }[]>([])
+  const [totalCount, setTotalCount] = useState<number | null>(null)
   const [showQueries, setShowQueries] = useState(false)
   const [followUpId, setFollowUpId] = useState<string | null>(null)
   const [followUpDate, setFollowUpDate] = useState('')
@@ -159,6 +160,10 @@ export default function LeadsClient() {
   }
 
   useEffect(() => { fetchLeads(); fetchQueries() }, [fetchLeads, fetchQueries])
+
+  useEffect(() => {
+    fetch('/api/leads/count').then(r => r.json()).then(d => { if (d.count != null) setTotalCount(d.count) })
+  }, [])
 
   const setSort = (k: SortKey) => {
     if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -334,7 +339,7 @@ export default function LeadsClient() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Leads</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{leads.length} total · {newCount} new{followUpsDue.length > 0 ? ` · ${followUpsDue.length} follow-ups due` : ''}</p>
+          <p className="text-sm text-slate-500 mt-0.5">{totalCount != null ? totalCount : leads.length} scraped · {leads.length} loaded · {newCount} new{followUpsDue.length > 0 ? ` · ${followUpsDue.length} follow-ups due` : ''}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center border border-white/10 rounded-lg overflow-hidden">
