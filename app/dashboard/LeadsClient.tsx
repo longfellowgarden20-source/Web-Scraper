@@ -83,6 +83,7 @@ export default function LeadsClient() {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [scoreFilter, setScoreFilter] = useState<string>('all')
   const [noWebsiteFilter, setNoWebsiteFilter] = useState(false)
+  const [score10Filter, setScore10Filter] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -167,6 +168,7 @@ export default function LeadsClient() {
   const filtered = leads
     .filter(l => scoreFilter === 'all' ? true : scoreFilter === 'high' ? l.score >= 8 : scoreFilter === 'mid' ? l.score >= 5 && l.score < 8 : l.score < 5)
     .filter(l => noWebsiteFilter ? !l.website : true)
+    .filter(l => score10Filter ? l.score === 10 : true)
 
   const sorted = [...filtered].sort((a, b) => {
     const mul = sortDir === 'asc' ? 1 : -1
@@ -501,12 +503,22 @@ export default function LeadsClient() {
             <option value="low">Low (1–4)</option>
           </select>
         </div>
-        <button
-          onClick={() => setNoWebsiteFilter(f => !f)}
-          className={`px-3 py-2 text-sm rounded-lg border font-medium transition-opacity ${noWebsiteFilter ? 'bg-[#0ea5e9]/20 border-[#0ea5e9]/60 text-[#0ea5e9]' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
-        >
-          No website
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setNoWebsiteFilter(f => !f)}
+            className={`px-3 py-2 text-sm rounded-lg border font-medium ${noWebsiteFilter ? 'bg-[#0ea5e9]/20 border-[#0ea5e9]/60 text-[#0ea5e9]' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
+            style={{ transition: 'color 0.15s, background 0.15s, border-color 0.15s' }}
+          >
+            No website
+          </button>
+          <button
+            onClick={() => setScore10Filter(f => !f)}
+            className={`px-3 py-2 text-sm rounded-lg border font-medium ${score10Filter ? 'bg-red-500/20 border-red-500/60 text-red-400' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}
+            style={{ transition: 'color 0.15s, background 0.15s, border-color 0.15s' }}
+          >
+            Score 10
+          </button>
+        </div>
       </div>
 
       {/* Bulk action bar */}
