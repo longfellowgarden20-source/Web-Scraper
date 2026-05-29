@@ -197,76 +197,80 @@ export async function GET(req: NextRequest) {
     .in('maps_place_id', placeIds)
 
   const existingIds = new Set((existingRows ?? []).map(r => r.maps_place_id))
-  // Cap at 5 new places per run — enrichment + Groq per lead takes ~10s each
-  const newPlaces = searchResults.filter(r => !existingIds.has(r.place_id)).slice(0, 5)
+  const newPlaces = searchResults.filter(r => !existingIds.has(r.place_id))
 
   if (!newPlaces.length) {
     return NextResponse.json({ ok: true, query: queryRow.query, saved: 0, message: 'All already saved' })
   }
 
-  const saved: string[] = []
+  // Step 1 — fetch all place details in parallel
+  const detailResults = await Promise.all(
+    newPlaces.map(p => getPlaceDetails(p.place_id).catch(() => null))
+  )
 
-  for (const partial of newPlaces) {
-    try {
-      // Get full details only for new places
-      const place = await getPlaceDetails(partial.place_id)
-      if (!place) continue
+  const validPlaces = detailResults.filter((p): p is PlaceResult => {
+    if (!p) return false
+    const { score } = fastScore(p)
+    return score > 2
+  })
 
-      const { score: rawScore, reasons: scoreReasons } = fastScore(place)
+  if (!validPlaces.length) {
+    return NextResponse.json({ ok: true, query: queryRow.query, saved: 0, message: 'No qualifying leads' })
+  }
 
-      // Skip only truly great websites (score 1-2 = actively good site, not worth contacting)
-      if (rawScore <= 2) continue
+  // Step 2 — save all leads first so nothing is lost if enrichment times out
+  const upsertRows = validPlaces.map(place => {
+    const { score: rawScore, reasons: scoreReasons } = fastScore(place)
+    const priority = calcPriority(rawScore, place.user_ratings_total)
+    return {
+      source: 'google_maps',
+      business_name: place.name,
+      city: extractCity(place.formatted_address),
+      category: extractCategory(place.types),
+      website: place.website ?? null,
+      phone: place.formatted_phone_number ?? null,
+      score: priority,
+      status: 'new',
+      maps_place_id: place.place_id,
+      google_rating: place.rating ?? null,
+      google_review_count: place.user_ratings_total ?? null,
+      email: null,
+      instagram: null,
+      facebook: null,
+      score_reasons: scoreReasons,
+    }
+  })
 
-      const priority = calcPriority(rawScore, place.user_ratings_total)
+  await getSupabaseAdmin()
+    .from('leads')
+    .upsert(upsertRows, { onConflict: 'maps_place_id', ignoreDuplicates: true })
 
-      const lead = {
-        source: 'google_maps',
-        business_name: place.name,
-        city: extractCity(place.formatted_address),
-        category: extractCategory(place.types),
-        website: place.website ?? null,
-        phone: place.formatted_phone_number ?? null,
-        score: priority,
-        status: 'new',
-        maps_place_id: place.place_id,
-        google_rating: place.rating ?? null,
-        google_review_count: place.user_ratings_total ?? null,
-        email: null,
-        instagram: null,
-        facebook: null,
-        score_reasons: scoreReasons,
-      }
+  const saved = upsertRows.map(r => r.business_name)
 
-      const { error } = await getSupabaseAdmin()
-        .from('leads')
-        .upsert(lead, { onConflict: 'maps_place_id', ignoreDuplicates: true })
+  // Step 3 — enrich + draft all in parallel
+  await Promise.all(
+    validPlaces.map(async place => {
+      try {
+        const [enrichment, draft] = await Promise.all([
+          place.website ? enrichFromWebsite(place.website) : Promise.resolve({ email: null, instagram: null, facebook: null }),
+          generateDraft(place),
+        ])
 
-      if (!error) {
-        saved.push(place.name)
-        // Enrich with email/instagram/facebook from their website
-        if (place.website) {
-          const enrichment = await enrichFromWebsite(place.website)
-          if (enrichment.email || enrichment.instagram || enrichment.facebook) {
-            await getSupabaseAdmin()
-              .from('leads')
-              .update(enrichment)
-              .eq('maps_place_id', place.place_id)
-          }
-        }
+        const update: Record<string, unknown> = {}
+        if (enrichment.email) update.email = enrichment.email
+        if (enrichment.instagram) update.instagram = enrichment.instagram
+        if (enrichment.facebook) update.facebook = enrichment.facebook
+        if (draft) update.outreach_draft = draft
 
-        // Auto-generate personalized outreach draft
-        const draft = await generateDraft(place)
-        if (draft) {
+        if (Object.keys(update).length) {
           await getSupabaseAdmin()
             .from('leads')
-            .update({ outreach_draft: draft })
+            .update(update)
             .eq('maps_place_id', place.place_id)
         }
-      }
-    } catch {
-      // skip failed places silently
-    }
-  }
+      } catch { /* enrichment failed for this lead — skip */ }
+    })
+  )
 
   return NextResponse.json({ ok: true, query: queryRow.query, saved: saved.length, leads: saved })
 }
