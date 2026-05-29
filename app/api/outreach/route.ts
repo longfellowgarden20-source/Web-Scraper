@@ -24,26 +24,15 @@ export async function POST(req: NextRequest) {
     ? `They have ${lead.google_review_count} Google reviews with a ${lead.google_rating} star rating.`
     : ''
 
-  const toneInstructions: Record<string, string> = {
-    professional: 'Write in a professional, respectful tone. Be clear and concise. End with a soft call to action. 3-5 sentences max.',
-    casual: 'Write in a friendly, conversational tone — like a fellow local business owner. Be relaxed and approachable. End with a low-pressure invitation to chat. 3-5 sentences max.',
-    urgent: 'Write with a sense of urgency. Highlight what they are losing by not having a strong web presence. Be direct and confident. End with a clear, time-sensitive call to action. 3-5 sentences max.',
-    sms: 'Write as a SHORT text message — max 2 sentences, 160 characters ideal. Casual, friendly, gets straight to the point. Include a question or soft CTA at the end. No sign-off needed beyond "- Fast Websites".',
-    instagram: 'Write as a casual Instagram DM — max 2 sentences, very relaxed and human, zero corporate language. Sound like a real person who noticed their business, not a marketer. No hashtags, no emojis unless natural. End with a soft question. No sign-off needed.',
+  const toneGuide: Record<string, string> = {
+    professional: 'Professional, concise, soft CTA. 3 sentences. Sign off "Fast Websites team". End with "Reply STOP to opt out."',
+    casual: 'Casual, like a local texting. Low-pressure. 3 sentences. Sign off "Fast Websites team". End with "Reply STOP to opt out."',
+    urgent: 'Urgent, direct, highlight what they are losing. 3 sentences. Sign off "Fast Websites team". End with "Reply STOP to opt out."',
+    sms: '2 sentences max, 160 chars, casual, end with a question. No sign-off.',
+    instagram: '2 sentences, casual DM, real person tone, soft question at end. No sign-off.',
   }
-  const toneGuide = toneInstructions[tone] ?? toneInstructions.professional
 
-  const prompt = `You are writing a cold outreach message for a web design agency called Fast Websites (fastwebsitesagency.com).
-
-Business details:
-- Name: ${lead.business_name}
-- City: ${lead.city ?? 'unknown'}
-- Category: ${lead.category ?? 'local business'}
-- ${websiteInfo}
-- ${sourceInfo}
-${reviewInfo ? `- ${reviewInfo}` : ''}
-
-${toneGuide} Be specific about why you're reaching out. Reference their business type and web situation. Do not use generic filler phrases. Do not mention the score number.${tone !== 'sms' && tone !== 'instagram' ? ' Sign off as "Fast Websites team". Add a final line: "Reply STOP to opt out of future messages."' : ''}`
+  const prompt = `Write cold outreach for Fast Websites (fastwebsitesagency.com). Business: ${lead.business_name}, ${lead.city ?? 'CA'}, ${lead.category ?? 'local business'}. ${websiteInfo} ${reviewInfo} Tone: ${toneGuide[tone] ?? toneGuide.professional} No generic filler. No score numbers.`
 
   const groqKeys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
   let draft = ''
