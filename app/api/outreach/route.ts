@@ -51,7 +51,7 @@ ${toneGuide} Be specific about why you're reaching out. Reference their business
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
+      model: 'llama-3.3-70b-versatile',
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     }),
