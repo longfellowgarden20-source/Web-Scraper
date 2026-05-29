@@ -457,14 +457,14 @@ export default function LeadDetailClient({ id }: { id: string }) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:flex-wrap">
             {/* Tone picker */}
-            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold">
+            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold w-full sm:w-auto">
               {(['casual', 'professional', 'urgent', 'sms', 'instagram'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setOutreachTone(t)}
-                  className={`px-2.5 py-1.5 capitalize ${outreachTone === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
+                  className={`flex-1 sm:flex-none px-2.5 py-2 capitalize ${outreachTone === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
                   style={{ transition: 'background 0.15s, color 0.15s' }}
                 >{t}</button>
               ))}

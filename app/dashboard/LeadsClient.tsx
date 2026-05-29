@@ -350,15 +350,15 @@ export default function LeadsClient() {
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
-          <button onClick={sendDigest} disabled={digestSending} title="Send digest email" className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/8 border border-white/10 rounded-lg disabled:opacity-40" style={{ transition: 'background 0.15s' }}>
-            {digestSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            {digestSending ? 'Sending...' : 'Send Digest'}
+          <button onClick={fetchLeads} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }} title="Refresh">
+            <RefreshCw className="w-4 h-4" />
           </button>
-          <a href="/api/leads/export" download className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }} title="Export CSV">
+          <a href="/api/leads/export" download className="hidden sm:flex p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }} title="Export CSV">
             <Download className="w-4 h-4" />
           </a>
-          <button onClick={fetchLeads} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/8 border border-white/10" style={{ transition: 'background 0.15s' }}>
-            <RefreshCw className="w-4 h-4" />
+          <button onClick={sendDigest} disabled={digestSending} title="Send digest email" className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/8 border border-white/10 rounded-lg disabled:opacity-40" style={{ transition: 'background 0.15s' }}>
+            {digestSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            {digestSending ? 'Sending...' : 'Digest'}
           </button>
         </div>
         {digestMsg && <p className={`w-full text-xs ${digestMsg.includes('sent') ? 'text-green-400' : 'text-red-400'}`}>{digestMsg}</p>}
@@ -372,8 +372,9 @@ export default function LeadsClient() {
             value={scrapeQuery}
             onChange={e => setScrapeQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && scrapeNow()}
-            placeholder="Scrape now — e.g. plumbers in Dallas, restaurants in Miami..."
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none"
+            placeholder="Scrape now — e.g. roofers in Newport Beach..."
+            className="flex-1 min-w-0 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none"
+            style={{ fontSize: 16 }}
           />
           {scrapeMsg && <span className={`text-xs shrink-0 ${scrapeMsg.includes('new') ? 'text-green-400' : 'text-red-400'}`}>{scrapeMsg}</span>}
           <button onClick={scrapeNow} disabled={scraping || !scrapeQuery.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-black rounded-lg disabled:opacity-40 shrink-0" style={{ background: '#0ea5e9', transition: 'opacity 0.15s' }}>
@@ -492,9 +493,10 @@ export default function LeadsClient() {
             onChange={e => setSearch(e.target.value)}
             placeholder="Search business name..."
             className={`${input} w-full pl-9`}
+            style={{ fontSize: 16 }}
           />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`${select} w-full`}>
             {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
           </select>
