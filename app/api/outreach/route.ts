@@ -53,7 +53,7 @@ ${toneGuide} Be specific about why you're reaching out. Reference their business
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'llama-3.1-8b-instant',
           max_tokens: 300,
           messages: [{ role: 'user', content: prompt }],
         }),
