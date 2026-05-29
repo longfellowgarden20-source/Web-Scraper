@@ -257,32 +257,32 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
   }
 }`
 
-  const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      max_tokens: 4096,
-      temperature: 0.7,
-      messages: [
-        { role: 'system', content: 'You are a JSON generator. Return only valid JSON, no markdown fences, no extra text.' },
-        { role: 'user', content: prompt },
-      ],
-    }),
-  })
-
-  const groqText = await groqRes.text()
-  if (!groqRes.ok) return NextResponse.json({ error: `Groq error: ${groqText}` }, { status: 500 })
-
-  let groqData: { choices?: { message?: { content?: string } }[] }
-  try { groqData = JSON.parse(groqText) } catch {
-    return NextResponse.json({ error: 'Invalid Groq response' }, { status: 500 })
+  const groqKeys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
+  let rawContent = ''
+  for (const key of groqKeys) {
+    try {
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 4096,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: 'You are a JSON generator. Return only valid JSON, no markdown fences, no extra text.' },
+            { role: 'user', content: prompt },
+          ],
+        }),
+      })
+      const groqText = await groqRes.text()
+      let groqData: { choices?: { message?: { content?: string } }[]; error?: { code?: string } }
+      try { groqData = JSON.parse(groqText) } catch { continue }
+      if (groqData?.error?.code === 'rate_limit_exceeded') continue
+      const content = groqData.choices?.[0]?.message?.content?.trim()
+      if (content) { rawContent = content; break }
+    } catch { continue }
   }
-
-  const rawContent = groqData.choices?.[0]?.message?.content?.trim() ?? ''
+  if (!rawContent) return NextResponse.json({ error: 'All Groq keys rate limited or failed' }, { status: 500 })
 
   // Strip markdown fences if model wrapped output in ```json ... ```
   const stripped = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
