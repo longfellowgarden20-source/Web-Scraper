@@ -640,9 +640,33 @@ export default function LeadDetailClient({ id }: { id: string }) {
 
         {previewUrl && (
           <div className="flex flex-col gap-3">
-            <div className="p-3 bg-white/3 border border-white/10 rounded-xl">
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0ea5e9] hover:underline flex items-center gap-1.5 break-all">
-                <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+            {/* iframe thumbnail — click opens full preview */}
+            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="block relative rounded-xl overflow-hidden border border-white/10 hover:border-[#0ea5e9]/40 group" style={{ transition: 'border-color 0.15s' }}>
+              <div style={{ height: 220, position: 'relative' }}>
+                <iframe
+                  src={previewUrl}
+                  title="Preview"
+                  scrolling="no"
+                  style={{
+                    width: '200%',
+                    height: '200%',
+                    transform: 'scale(0.5)',
+                    transformOrigin: 'top left',
+                    border: 'none',
+                    pointerEvents: 'none',
+                  }}
+                />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-xl" style={{ transition: 'opacity 0.15s' }}>
+                <span className="flex items-center gap-2 px-4 py-2 bg-[#0ea5e9] text-black text-xs font-bold rounded-lg">
+                  <ExternalLink className="w-3.5 h-3.5" /> Open Full Preview
+                </span>
+              </div>
+            </a>
+            {/* Link row */}
+            <div className="p-2.5 bg-white/3 border border-white/10 rounded-lg">
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0ea5e9] hover:underline flex items-center gap-1.5 break-all">
+                <ExternalLink className="w-3 h-3 flex-shrink-0" />
                 {previewUrl}
               </a>
             </div>
