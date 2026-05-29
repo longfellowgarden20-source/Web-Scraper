@@ -197,7 +197,8 @@ export async function GET(req: NextRequest) {
     .in('maps_place_id', placeIds)
 
   const existingIds = new Set((existingRows ?? []).map(r => r.maps_place_id))
-  const newPlaces = searchResults.filter(r => !existingIds.has(r.place_id))
+  // Cap at 5 new places per run — enrichment + Groq per lead takes ~10s each
+  const newPlaces = searchResults.filter(r => !existingIds.has(r.place_id)).slice(0, 5)
 
   if (!newPlaces.length) {
     return NextResponse.json({ ok: true, query: queryRow.query, saved: 0, message: 'All already saved' })
