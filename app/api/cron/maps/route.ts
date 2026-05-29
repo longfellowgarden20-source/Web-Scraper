@@ -38,6 +38,34 @@ async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
   return data.result ?? null
 }
 
+async function enrichFromWebsite(website: string): Promise<{ email: string | null; instagram: string | null; facebook: string | null }> {
+  const result = { email: null as string | null, instagram: null as string | null, facebook: null as string | null }
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
+    const urls = [website.replace(/\/$/, '') + '/contact', website.replace(/\/$/, '') + '/contact-us', website]
+    let html = ''
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FastWebsitesBot/1.0)' } })
+        if (res.ok) { html = await res.text(); if (html.length > 500) break }
+      } catch { /* try next */ }
+    }
+    clearTimeout(timeout)
+    if (!html) return result
+    const emailMatch = html.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g)
+    if (emailMatch) {
+      const filtered = emailMatch.filter(e => !e.includes('example.com') && !e.includes('sentry') && !e.includes('wix') && !e.includes('wordpress') && !e.endsWith('.png') && !e.endsWith('.jpg'))
+      if (filtered.length) result.email = filtered[0]
+    }
+    const igMatch = html.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i)
+    if (igMatch) result.instagram = `https://instagram.com/${igMatch[1]}`
+    const fbMatch = html.match(/facebook\.com\/([a-zA-Z0-9_.]+)/i)
+    if (fbMatch && !fbMatch[1].startsWith('sharer') && !fbMatch[1].startsWith('share')) result.facebook = `https://facebook.com/${fbMatch[1]}`
+  } catch { /* enrichment failed */ }
+  return result
+}
+
 // Fast score — no HTTP fetches, based only on what Maps tells us
 // Returns score (higher = worse web presence = better lead) and reasons
 function fastScore(place: PlaceResult): { score: number; reasons: string[] } {
@@ -169,7 +197,19 @@ export async function GET(req: NextRequest) {
         .from('leads')
         .upsert(lead, { onConflict: 'maps_place_id', ignoreDuplicates: true })
 
-      if (!error) saved.push(place.name)
+      if (!error) {
+        saved.push(place.name)
+        // Enrich with email/instagram/facebook from their website
+        if (place.website) {
+          const enrichment = await enrichFromWebsite(place.website)
+          if (enrichment.email || enrichment.instagram || enrichment.facebook) {
+            await getSupabaseAdmin()
+              .from('leads')
+              .update(enrichment)
+              .eq('maps_place_id', place.place_id)
+          }
+        }
+      }
     } catch {
       // skip failed places silently
     }
