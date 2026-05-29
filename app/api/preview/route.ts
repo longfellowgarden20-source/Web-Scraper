@@ -71,6 +71,12 @@ const INDUSTRY_ICONS: Record<string, string[]> = {
   gym:      ['Zap', 'Star', 'Shield', 'Clock', 'DollarSign', 'Headphones'],
   dental:   ['Star', 'Shield', 'Clock', 'DollarSign', 'Home', 'Headphones'],
   medical:  ['Star', 'Shield', 'Clock', 'DollarSign', 'Home', 'Headphones'],
+  pool:     ['Zap', 'Wrench', 'Shield', 'Star', 'Clock', 'Headphones'],
+  concrete: ['Wrench', 'Home', 'Building2', 'Shield', 'Star', 'Headphones'],
+  tree:     ['Trees', 'Scissors', 'Home', 'Shield', 'Star', 'Headphones'],
+  pest:     ['Shield', 'Home', 'Building2', 'Star', 'Clock', 'Headphones'],
+  groom:    ['Scissors', 'Star', 'Shield', 'Clock', 'DollarSign', 'Headphones'],
+  pet:      ['Scissors', 'Star', 'Shield', 'Clock', 'DollarSign', 'Headphones'],
 }
 
 function getIconSet(category: string): string[] {
