@@ -52,7 +52,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [savingNotes, setSavingNotes] = useState(false)
   const [status, setStatus] = useState('')
   const [manualEmail, setManualEmail] = useState('')
-  const [outreachTone, setOutreachTone] = useState<'professional' | 'casual' | 'urgent' | 'sms' | 'instagram'>('professional')
+  const [outreachTone, setOutreachTone] = useState<'professional' | 'casual' | 'urgent' | 'sms' | 'instagram'>('casual')
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
@@ -181,7 +181,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       const outreachRes = await fetch('/api/outreach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, tone: 'sms' }),
+        body: JSON.stringify({ id, tone: outreachTone }),
       })
       const outreachText = await outreachRes.text()
       let draft = ''
@@ -194,9 +194,8 @@ export default function LeadDetailClient({ id }: { id: string }) {
         throw new Error(`Bad outreach response: ${outreachText.slice(0, 100)}`)
       }
 
-      // Step 3 — assemble final message
-      const firstName = lead.business_name.split(' ')[0]
-      const message = `Hey ${firstName}, I built a free website for ${lead.business_name} — check it out: ${url}\n\nTakes 2 min to look at. Let me know what you think!\n\n— Fast Websites`
+      // Step 3 — assemble final message: Groq draft + preview link
+      const message = `${draft}\n\nCheck out the site I built for you: ${url}`
       setLaunchMessage(message)
       setLaunchStep(null)
     } catch (e: unknown) {
@@ -410,16 +409,32 @@ export default function LeadDetailClient({ id }: { id: string }) {
       </div>
 
       {/* Launch All */}
+      {/* Combined Launch */}
       <div className="bg-gradient-to-br from-[#0ea5e9]/10 to-[#0ea5e9]/5 border border-[#0ea5e9]/25 rounded-2xl p-5 flex flex-col gap-4">
+        {/* Header row */}
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <Rocket className="w-4 h-4 text-[#0ea5e9]" />
-              <p className="text-sm font-bold text-white">Launch — One Tap</p>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">Builds the preview site + writes your SMS in one go</p>
-          </div>
           <div className="flex items-center gap-2">
+            <Rocket className="w-4 h-4 text-[#0ea5e9]" />
+            <p className="text-sm font-bold text-white">Launch</p>
+            {previewViews != null && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${previewViews > 0 ? 'bg-green-500/15 text-green-400' : 'bg-slate-500/15 text-slate-500'}`}>
+                {previewViews > 0 ? `${previewViews} view${previewViews > 1 ? 's' : ''}` : 'Not viewed'}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Tone picker */}
+            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold">
+              {(['casual', 'professional', 'urgent', 'sms', 'instagram'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setOutreachTone(t)}
+                  className={`px-2.5 py-1.5 capitalize ${outreachTone === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
+                  style={{ transition: 'background 0.15s, color 0.15s' }}
+                >{t}</button>
+              ))}
+            </div>
+            {/* Color override */}
             <div className="flex items-center gap-1.5 px-2 py-1 border border-white/10 rounded-lg">
               <span className="text-xs text-slate-500">Color</span>
               <input
@@ -436,6 +451,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
           </div>
         </div>
 
+        {/* Launch button */}
         <button
           onClick={launchAll}
           disabled={launchLoading}
@@ -444,7 +460,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
         >
           {launchLoading
             ? <><Loader2 className="w-5 h-5 animate-spin" /> {launchStep ?? 'Working...'}</>
-            : <><Rocket className="w-5 h-5" /> {launchMessage ? 'Regenerate' : 'Launch'}</>
+            : <><Rocket className="w-5 h-5" /> {launchMessage ? 'Regenerate' : 'Build Site + Write Message'}</>
           }
         </button>
 
@@ -455,248 +471,84 @@ export default function LeadDetailClient({ id }: { id: string }) {
           </div>
         )}
 
+        {/* Preview iframe thumbnail */}
+        {previewUrl && (
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="block relative rounded-xl overflow-hidden border border-white/10 hover:border-[#0ea5e9]/40 group" style={{ transition: 'border-color 0.15s' }}>
+            <div style={{ height: 220, position: 'relative' }}>
+              <iframe
+                src={previewUrl}
+                title="Preview"
+                scrolling="no"
+                style={{ width: '200%', height: '200%', transform: 'scale(0.5)', transformOrigin: 'top left', border: 'none', pointerEvents: 'none' }}
+              />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-xl" style={{ transition: 'opacity 0.15s' }}>
+              <span className="flex items-center gap-2 px-4 py-2 bg-[#0ea5e9] text-black text-xs font-bold rounded-lg">
+                <ExternalLink className="w-3.5 h-3.5" /> Open Full Preview
+              </span>
+            </div>
+          </a>
+        )}
+
+        {/* Ready to send */}
         {launchMessage && (
           <div className="flex flex-col gap-3">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Ready to send</p>
-            <div className="p-4 bg-black/30 border border-white/10 rounded-xl text-sm text-slate-100 leading-relaxed whitespace-pre-wrap font-mono">
+            <div className="p-4 bg-black/30 border border-white/10 rounded-xl text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">
               {launchMessage}
             </div>
             <div className="flex flex-col gap-2">
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(launchMessage)
-                  setLaunchCopied(true)
-                  setTimeout(() => setLaunchCopied(false), 2000)
-                }}
+                onClick={() => { navigator.clipboard.writeText(launchMessage); setLaunchCopied(true); setTimeout(() => setLaunchCopied(false), 2000) }}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold border border-white/15 text-white hover:bg-white/8 active:scale-[0.98]"
                 style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
               >
                 {launchCopied ? <><Check className="w-4 h-4 text-green-400" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy Message</>}
-              </button>
-              {lead.phone && (
-                <a
-                  href={`sms:${lead.phone}?body=${encodeURIComponent(launchMessage)}`}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold bg-green-500/15 border border-green-500/25 text-green-400 hover:bg-green-500/20 active:scale-[0.98]"
-                  style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
-                >
-                  <Phone className="w-4 h-4" /> Open in Messages — {lead.phone}
-                </a>
-              )}
-              {(lead.email || manualEmail) && (
-                <a
-                  href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`I built a free website for ${lead.business_name}`)}&body=${encodeURIComponent(launchMessage)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold bg-[#0ea5e9]/15 border border-[#0ea5e9]/25 text-[#0ea5e9] hover:bg-[#0ea5e9]/20 active:scale-[0.98]"
-                  style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
-                >
-                  <Send className="w-4 h-4" /> Open in Gmail
-                </a>
-              )}
-              {!lead.email && !manualEmail && (
-                <input
-                  type="email"
-                  value={manualEmail}
-                  onChange={e => setManualEmail(e.target.value)}
-                  placeholder="No email found — add one for Gmail"
-                  className={inputCls}
-                />
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Outreach drafter */}
-      <div className={`${card} p-5 flex flex-col gap-4`}>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Outreach Draft</p>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold">
-              {(['professional', 'casual', 'urgent', 'sms', 'instagram'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setOutreachTone(t)}
-                  className={`px-2.5 py-1.5 capitalize ${outreachTone === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
-                  style={{ transition: 'background 0.15s, color 0.15s' }}
-                >{t}</button>
-              ))}
-            </div>
-            <button
-              onClick={generateDraft}
-              disabled={draftLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-black bg-[#0ea5e9] rounded-lg disabled:opacity-50 hover:bg-[#38bdf8]"
-              style={{ transition: 'background 0.15s' }}
-            >
-              {draftLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-              {lead.outreach_draft ? 'Regenerate' : 'Generate Draft'}
-            </button>
-          </div>
-        </div>
-
-        {draftError && (
-          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            {draftError}
-          </div>
-        )}
-
-        {lead.outreach_draft ? (
-          <div className="flex flex-col gap-3">
-            <div className="p-4 bg-white/3 border border-white/10 rounded-xl text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
-              {lead.outreach_draft}
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={copyDraft}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-white/10 rounded-lg text-slate-400 hover:text-white hover:border-white/30"
-                style={{ transition: 'color 0.15s, border-color 0.15s' }}
-              >
-                {copied ? <><Check className="w-3.5 h-3.5 text-green-400" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
               </button>
               {outreachTone === 'instagram' && lead.instagram ? (
                 <a
                   href={lead.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => { if (lead.outreach_draft) navigator.clipboard.writeText(lead.outreach_draft) }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-pink-500/20 border border-pink-500/30 text-pink-400 rounded-lg hover:bg-pink-500/30"
-                  style={{ transition: 'background 0.15s' }}
+                  onClick={() => navigator.clipboard.writeText(launchMessage)}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold bg-pink-500/15 border border-pink-500/25 text-pink-400 hover:bg-pink-500/20 active:scale-[0.98]"
+                  style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
                 >
-                  <Copy className="w-3.5 h-3.5" /> Copy & Open Instagram
+                  <Copy className="w-4 h-4" /> Copy & Open Instagram
                 </a>
-              ) : outreachTone === 'instagram' && !lead.instagram ? (
-                <span className="text-xs text-slate-600">No Instagram found for this lead</span>
               ) : (
-                <a
-                  href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`Quick question about ${lead.business_name}'s website`)}&body=${encodeURIComponent(lead.outreach_draft ?? '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0ea5e9] text-black rounded-lg hover:bg-[#38bdf8]"
-                  style={{ transition: 'background 0.15s' }}
-                >
-                  <Send className="w-3.5 h-3.5" /> Send via Gmail
-                </a>
+                <>
+                  {lead.phone && (
+                    <a
+                      href={`sms:${lead.phone}?body=${encodeURIComponent(launchMessage)}`}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold bg-green-500/15 border border-green-500/25 text-green-400 hover:bg-green-500/20 active:scale-[0.98]"
+                      style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
+                    >
+                      <Phone className="w-4 h-4" /> Open in Messages — {lead.phone}
+                    </a>
+                  )}
+                  {(lead.email || manualEmail) ? (
+                    <a
+                      href={gmailHref(lead.email ?? manualEmail, `I built a free website for ${lead.business_name}`, launchMessage)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold bg-[#0ea5e9]/15 border border-[#0ea5e9]/25 text-[#0ea5e9] hover:bg-[#0ea5e9]/20 active:scale-[0.98]"
+                      style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
+                    >
+                      <Send className="w-4 h-4" /> Open in Gmail
+                    </a>
+                  ) : (
+                    <input
+                      type="email"
+                      value={manualEmail}
+                      onChange={e => setManualEmail(e.target.value)}
+                      placeholder="No email found — add one for Gmail"
+                      className={inputCls}
+                    />
+                  )}
+                </>
               )}
             </div>
-            {!lead.email && (
-              <input
-                type="email"
-                value={manualEmail}
-                onChange={e => setManualEmail(e.target.value)}
-                placeholder="No email found — enter one manually"
-                className={inputCls}
-              />
-            )}
-            <p className="text-xs text-slate-600">Opens Gmail — review before sending.</p>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">No draft yet. Click Generate to create personalized outreach.</p>
-        )}
-      </div>
-      {/* Website Preview Generator */}
-      <div className={`${card} p-5 flex flex-col gap-4`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Website Preview</p>
-              {previewViews != null && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${previewViews > 0 ? 'bg-green-500/15 text-green-400' : 'bg-slate-500/15 text-slate-500'}`}>
-                  {previewViews > 0 ? `${previewViews} view${previewViews > 1 ? 's' : ''}` : 'Not viewed'}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-600 mt-0.5">Generate a tailored site to send as a pitch</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            <div className="flex items-center gap-1.5 px-2 py-1 border border-white/10 rounded-lg">
-              <span className="text-xs text-slate-500">Color</span>
-              <input
-                type="color"
-                value={previewColor}
-                onChange={e => setPreviewColor(e.target.value)}
-                className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
-                title="Brand color override"
-              />
-            </div>
-            <button
-              onClick={generatePreview}
-              disabled={previewLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-black bg-[#0ea5e9] rounded-lg disabled:opacity-50 hover:bg-[#38bdf8]"
-              style={{ transition: 'background 0.15s' }}
-            >
-              {previewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-              {previewUrl ? 'Regenerate' : 'Generate Preview'}
-            </button>
-          </div>
-        </div>
-
-        {previewError && (
-          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            {previewError}
-          </div>
-        )}
-
-        {previewUrl && (
-          <div className="flex flex-col gap-3">
-            {/* iframe thumbnail — click opens full preview */}
-            <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="block relative rounded-xl overflow-hidden border border-white/10 hover:border-[#0ea5e9]/40 group" style={{ transition: 'border-color 0.15s' }}>
-              <div style={{ height: 220, position: 'relative' }}>
-                <iframe
-                  src={previewUrl}
-                  title="Preview"
-                  scrolling="no"
-                  style={{
-                    width: '200%',
-                    height: '200%',
-                    transform: 'scale(0.5)',
-                    transformOrigin: 'top left',
-                    border: 'none',
-                    pointerEvents: 'none',
-                  }}
-                />
-              </div>
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-xl" style={{ transition: 'opacity 0.15s' }}>
-                <span className="flex items-center gap-2 px-4 py-2 bg-[#0ea5e9] text-black text-xs font-bold rounded-lg">
-                  <ExternalLink className="w-3.5 h-3.5" /> Open Full Preview
-                </span>
-              </div>
-            </a>
-            {/* Link row */}
-            <div className="p-2.5 bg-white/3 border border-white/10 rounded-lg">
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0ea5e9] hover:underline flex items-center gap-1.5 break-all">
-                <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                {previewUrl}
-              </a>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => { navigator.clipboard.writeText(previewUrl) }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-white/10 rounded-lg text-slate-400 hover:text-white hover:border-white/30"
-                style={{ transition: 'color 0.15s, border-color 0.15s' }}
-              >
-                <Copy className="w-3.5 h-3.5" /> Copy Link
-              </button>
-              <a
-                href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`We built a free website preview for ${lead.business_name}`)}&body=${encodeURIComponent(`Hi,\n\nI put together a free website preview for ${lead.business_name}. Take a look:\n\n${previewUrl}\n\nLet me know what you think — happy to make changes or hop on a quick call.\n\n— Fast Websites`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0ea5e9] text-black rounded-lg hover:bg-[#38bdf8]"
-                style={{ transition: 'background 0.15s' }}
-              >
-                <Send className="w-3.5 h-3.5" /> Send via Gmail
-              </a>
-            </div>
-            {!lead.email && (
-              <input
-                type="email"
-                value={manualEmail}
-                onChange={e => setManualEmail(e.target.value)}
-                placeholder="No email found — enter one to send"
-                className={inputCls}
-              />
-            )}
           </div>
         )}
       </div>
