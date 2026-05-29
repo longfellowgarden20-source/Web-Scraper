@@ -27,6 +27,18 @@ type Lead = {
   score_reasons: string[] | null
 }
 
+function gmailHref(email: string, subject: string, body: string | null) {
+  const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|Android/i.test(navigator.userAgent)
+  const params = new URLSearchParams()
+  if (subject) params.set('subject', subject)
+  if (body) params.set('body', body)
+  if (isMobile) return `mailto:${email}${params.toString() ? '?' + params.toString() : ''}`
+  const gParams = new URLSearchParams({ view: 'cm', to: email })
+  if (subject) gParams.set('su', subject)
+  if (body) gParams.set('body', body)
+  return `https://mail.google.com/mail/?${gParams.toString()}`
+}
+
 const card = 'bg-white/5 border border-white/10 rounded-2xl'
 const inputCls = 'px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0ea5e9]/60 w-full'
 
