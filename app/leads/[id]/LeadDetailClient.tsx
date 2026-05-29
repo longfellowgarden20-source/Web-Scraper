@@ -70,6 +70,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [previewViews, setPreviewViews] = useState<number | null>(null)
   const [previewColor, setPreviewColor] = useState('')
+  const [enriching, setEnriching] = useState(false)
 
   // Launch All state
   const [launchLoading, setLaunchLoading] = useState(false)
@@ -102,6 +103,15 @@ export default function LeadDetailClient({ id }: { id: string }) {
       })
       .catch(() => {})
   }, [id])
+
+  const enrichLead = async () => {
+    if (!lead) return
+    setEnriching(true)
+    const res = await fetch('/api/leads/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id }) })
+    const data = await res.json()
+    if (res.ok) setLead(l => l ? { ...l, email: data.email ?? l.email, instagram: data.instagram ?? l.instagram, facebook: data.facebook ?? l.facebook } : l)
+    setEnriching(false)
+  }
 
   const updateField = async (updates: Partial<Lead>) => {
     const res = await fetch('/api/leads', {
@@ -335,6 +345,19 @@ export default function LeadDetailClient({ id }: { id: string }) {
             <a href={lead.instagram} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0ea5e9] hover:underline flex items-center gap-1">
               {lead.instagram.replace('https://instagram.com/', '@')} <ExternalLink className="w-3 h-3" />
             </a>
+          </div>
+        )}
+        {lead.website && !lead.instagram && !lead.email && (
+          <div className="col-span-2">
+            <button
+              onClick={enrichLead}
+              disabled={enriching}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-white/20 disabled:opacity-40"
+              style={{ transition: 'color 0.15s, border-color 0.15s' }}
+            >
+              {enriching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+              {enriching ? 'Finding contact info...' : 'Find email & Instagram'}
+            </button>
           </div>
         )}
         {lead.facebook && (
