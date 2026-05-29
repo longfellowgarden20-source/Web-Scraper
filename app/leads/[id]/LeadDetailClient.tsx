@@ -539,7 +539,16 @@ export default function LeadDetailClient({ id }: { id: string }) {
                       <Phone className="w-4 h-4" /> Open in Messages — {lead.phone}
                     </a>
                   )}
-                  {(lead.email || manualEmail) ? (
+                  {!lead.email && (
+                    <input
+                      type="email"
+                      value={manualEmail}
+                      onChange={e => setManualEmail(e.target.value)}
+                      placeholder="No email found — enter one to send"
+                      className={inputCls}
+                    />
+                  )}
+                  {(lead.email || manualEmail) && (
                     <a
                       href={gmailHref(lead.email ?? manualEmail, `I built a free website for ${lead.business_name}`, launchMessage)}
                       target="_blank"
@@ -549,14 +558,6 @@ export default function LeadDetailClient({ id }: { id: string }) {
                     >
                       <Send className="w-4 h-4" /> Open in Gmail
                     </a>
-                  ) : (
-                    <input
-                      type="email"
-                      value={manualEmail}
-                      onChange={e => setManualEmail(e.target.value)}
-                      placeholder="No email found — add one for Gmail"
-                      className={inputCls}
-                    />
                   )}
                 </>
               )}
