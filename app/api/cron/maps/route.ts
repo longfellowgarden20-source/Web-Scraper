@@ -38,6 +38,49 @@ async function getPlaceDetails(placeId: string): Promise<PlaceResult | null> {
   return data.result ?? null
 }
 
+async function generateDraft(place: PlaceResult): Promise<string | null> {
+  const websiteInfo = place.website
+    ? `They have a website (${place.website}) that looks low quality or outdated.`
+    : `They have no website at all.`
+
+  const reviewInfo = place.user_ratings_total
+    ? `They have ${place.user_ratings_total} Google reviews and a ${place.rating} star rating — people clearly find them, but their web presence doesn't match.`
+    : ''
+
+  const prompt = `You write cold outreach for a web design agency called Fast Websites (fastwebsitesagency.com).
+
+Business: ${place.name}
+Location: ${place.formatted_address ?? 'California'}
+Type: ${place.types?.slice(0, 2).join(', ') ?? 'local business'}
+Web situation: ${websiteInfo}
+${reviewInfo}
+
+Write a short casual outreach message. Rules:
+- 2-3 sentences max
+- Sound like a real person texting, not a marketer
+- Mention something specific about their situation (no website, or bad website)
+- Don't use their name or act like you know them personally
+- No fluff like "I hope this finds you well" or "I came across your business"
+- End with a simple low-pressure question
+- No sign-off needed`
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 150,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    const data = await res.json()
+    return data.choices?.[0]?.message?.content?.trim() ?? null
+  } catch {
+    return null
+  }
+}
+
 async function enrichFromWebsite(website: string): Promise<{ email: string | null; instagram: string | null; facebook: string | null }> {
   const result = { email: null as string | null, instagram: null as string | null, facebook: null as string | null }
   try {
@@ -208,6 +251,15 @@ export async function GET(req: NextRequest) {
               .update(enrichment)
               .eq('maps_place_id', place.place_id)
           }
+        }
+
+        // Auto-generate personalized outreach draft
+        const draft = await generateDraft(place)
+        if (draft) {
+          await getSupabaseAdmin()
+            .from('leads')
+            .update({ outreach_draft: draft })
+            .eq('maps_place_id', place.place_id)
         }
       }
     } catch {
