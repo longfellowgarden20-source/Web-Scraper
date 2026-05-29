@@ -589,7 +589,7 @@ export default function LeadsClient() {
                       <td className="px-4 py-3">
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-white">{lead.business_name}</span>
+                            <a href={`/leads/${lead.id}`} className="font-medium text-white hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>{lead.business_name}</a>
                             {isStale(lead.created_at, lead.status) && (
                               <span title="New lead — no action in 7+ days" className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
                             )}
@@ -677,7 +677,7 @@ export default function LeadsClient() {
                       <input type="checkbox" checked={selected.has(lead.id)} onChange={() => toggleSelect(lead.id)} className="accent-[#0ea5e9] cursor-pointer mt-1 flex-shrink-0" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-semibold text-white text-sm">{lead.business_name}</span>
+                          <a href={`/leads/${lead.id}`} className="font-semibold text-white text-sm hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>{lead.business_name}</a>
                           {isStale(lead.created_at, lead.status) && (
                             <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
                           )}
