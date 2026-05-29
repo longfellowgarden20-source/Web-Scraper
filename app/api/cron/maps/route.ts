@@ -53,7 +53,7 @@ async function generateDraft(place: PlaceResult): Promise<string | null> {
 
   const prompt = `Cold outreach for Fast Websites agency. Business: ${place.name}, ${place.formatted_address?.split(',')[1]?.trim() ?? 'CA'}. ${websiteInfo}${reviewInfo ? ' ' + reviewInfo : ''} Write 2 casual sentences like a real person texting. Mention their specific web situation. End with a soft question. No intro, no sign-off.`
 
-  const keys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2].filter(Boolean) as string[]
+  const keys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
   for (const key of keys) {
     try {
       const controller = new AbortController()
