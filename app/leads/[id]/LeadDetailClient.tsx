@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send, Phone, Globe } from 'lucide-react'
+import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send, Phone, Globe, Rocket } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -57,7 +57,14 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [previewViews, setPreviewViews] = useState<number | null>(null)
-  const [previewColor, setPreviewColor] = useState('#0ea5e9')
+  const [previewColor, setPreviewColor] = useState('')
+
+  // Launch All state
+  const [launchLoading, setLaunchLoading] = useState(false)
+  const [launchStep, setLaunchStep] = useState<string | null>(null)
+  const [launchMessage, setLaunchMessage] = useState<string | null>(null)
+  const [launchCopied, setLaunchCopied] = useState(false)
+  const [launchError, setLaunchError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(`/api/leads/${id}`)
@@ -136,7 +143,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       const res = await fetch('/api/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: id, colorOverride: previewColor }),
+        body: JSON.stringify({ leadId: id, ...(previewColor ? { colorOverride: previewColor } : {}) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
@@ -146,6 +153,57 @@ export default function LeadDetailClient({ id }: { id: string }) {
       setPreviewError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setPreviewLoading(false)
+    }
+  }
+
+  const launchAll = async () => {
+    if (!lead) return
+    setLaunchLoading(true)
+    setLaunchError(null)
+    setLaunchMessage(null)
+
+    try {
+      // Step 1 — preview
+      setLaunchStep('Building your site...')
+      const previewRes = await fetch('/api/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id, ...(previewColor ? { colorOverride: previewColor } : {}) }),
+      })
+      const previewData = await previewRes.json()
+      if (!previewRes.ok) throw new Error(previewData.error ?? `Preview error ${previewRes.status}`)
+      const url = previewData.previewUrl as string
+      setPreviewUrl(url)
+      setPreviewViews(0)
+
+      // Step 2 — outreach draft
+      setLaunchStep('Writing your message...')
+      const outreachRes = await fetch('/api/outreach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, tone: 'sms' }),
+      })
+      const outreachText = await outreachRes.text()
+      let draft = ''
+      try {
+        const outreachData = JSON.parse(outreachText)
+        if (!outreachRes.ok) throw new Error(outreachData.error ?? `Outreach error ${outreachRes.status}`)
+        draft = outreachData.draft ?? ''
+        setLead(prev => prev ? { ...prev, outreach_draft: draft } : prev)
+      } catch {
+        throw new Error(`Bad outreach response: ${outreachText.slice(0, 100)}`)
+      }
+
+      // Step 3 — assemble final message
+      const firstName = lead.business_name.split(' ')[0]
+      const message = `Hey ${firstName}, I built a free website for ${lead.business_name} — check it out: ${url}\n\nTakes 2 min to look at. Let me know what you think!\n\n— Fast Websites`
+      setLaunchMessage(message)
+      setLaunchStep(null)
+    } catch (e: unknown) {
+      setLaunchError(e instanceof Error ? e.message : 'Unknown error')
+      setLaunchStep(null)
+    } finally {
+      setLaunchLoading(false)
     }
   }
 
@@ -349,6 +407,104 @@ export default function LeadDetailClient({ id }: { id: string }) {
         >
           {savingNotes ? 'Saving...' : 'Save Notes'}
         </button>
+      </div>
+
+      {/* Launch All */}
+      <div className="bg-gradient-to-br from-[#0ea5e9]/10 to-[#0ea5e9]/5 border border-[#0ea5e9]/25 rounded-2xl p-5 flex flex-col gap-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <Rocket className="w-4 h-4 text-[#0ea5e9]" />
+              <p className="text-sm font-bold text-white">Launch — One Tap</p>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">Builds the preview site + writes your SMS in one go</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-2 py-1 border border-white/10 rounded-lg">
+              <span className="text-xs text-slate-500">Color</span>
+              <input
+                type="color"
+                value={previewColor || '#0ea5e9'}
+                onChange={e => setPreviewColor(e.target.value)}
+                className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
+                title="Override brand color (leave default to let AI choose)"
+              />
+              {previewColor && (
+                <button onClick={() => setPreviewColor('')} className="text-xs text-slate-600 hover:text-slate-400" title="Reset to AI auto-pick">✕</button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={launchAll}
+          disabled={launchLoading}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-base font-bold text-black bg-[#0ea5e9] disabled:opacity-60 hover:bg-[#38bdf8] active:scale-[0.98]"
+          style={{ minHeight: 52, transition: 'background 0.15s, transform 0.1s' }}
+        >
+          {launchLoading
+            ? <><Loader2 className="w-5 h-5 animate-spin" /> {launchStep ?? 'Working...'}</>
+            : <><Rocket className="w-5 h-5" /> {launchMessage ? 'Regenerate' : 'Launch'}</>
+          }
+        </button>
+
+        {launchError && (
+          <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            {launchError}
+          </div>
+        )}
+
+        {launchMessage && (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Ready to send</p>
+            <div className="p-4 bg-black/30 border border-white/10 rounded-xl text-sm text-slate-100 leading-relaxed whitespace-pre-wrap font-mono">
+              {launchMessage}
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(launchMessage)
+                  setLaunchCopied(true)
+                  setTimeout(() => setLaunchCopied(false), 2000)
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold border border-white/15 text-white hover:bg-white/8 active:scale-[0.98]"
+                style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
+              >
+                {launchCopied ? <><Check className="w-4 h-4 text-green-400" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy Message</>}
+              </button>
+              {lead.phone && (
+                <a
+                  href={`sms:${lead.phone}?body=${encodeURIComponent(launchMessage)}`}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold bg-green-500/15 border border-green-500/25 text-green-400 hover:bg-green-500/20 active:scale-[0.98]"
+                  style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
+                >
+                  <Phone className="w-4 h-4" /> Open in Messages — {lead.phone}
+                </a>
+              )}
+              {(lead.email || manualEmail) && (
+                <a
+                  href={`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(lead.email ?? manualEmail)}&su=${encodeURIComponent(`I built a free website for ${lead.business_name}`)}&body=${encodeURIComponent(launchMessage)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold bg-[#0ea5e9]/15 border border-[#0ea5e9]/25 text-[#0ea5e9] hover:bg-[#0ea5e9]/20 active:scale-[0.98]"
+                  style={{ minHeight: 48, transition: 'background 0.15s, transform 0.1s' }}
+                >
+                  <Send className="w-4 h-4" /> Open in Gmail
+                </a>
+              )}
+              {!lead.email && !manualEmail && (
+                <input
+                  type="email"
+                  value={manualEmail}
+                  onChange={e => setManualEmail(e.target.value)}
+                  placeholder="No email found — add one for Gmail"
+                  className={inputCls}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Outreach drafter */}
