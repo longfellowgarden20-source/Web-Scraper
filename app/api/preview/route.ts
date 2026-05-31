@@ -38,11 +38,15 @@ function lightenHex(hex: string, alpha = '10'): string {
 function buildColorPalette(accent: string) {
   const dark = darkenHex(accent)
   const footer = darkenHex(dark)
+  // Check luminance — dark accents need more alpha to stay visible as tints
+  const lum = luminance(accent)
+  const lightAlpha = lum < 0.15 ? '20' : '12' // more opaque tint for very dark colors
+  const borderAlpha = lum < 0.15 ? '50' : '30' // more visible border for very dark colors
   return {
     accent,
     accentDark: dark,
-    accentLight: lightenHex(accent, '12'),
-    accentBorder: lightenHex(accent, '30'),
+    accentLight: lightenHex(accent, lightAlpha),
+    accentBorder: lightenHex(accent, borderAlpha),
     accentFooter: footer,
     accentFooterBorder: dark,
     // Always use light neutral text in footer — accent-tinted text on dark bg is unreadable
@@ -101,7 +105,7 @@ export async function GET(req: NextRequest) {
 
   if (!data) return NextResponse.json(null)
 
-  const previewUrl = `${process.env.NEXUS_AGENCY_URL ?? 'https://nexus-agency-formore-cvufrmzih.vercel.app'}/preview/${data.id}`
+  const previewUrl = `${process.env.NEXUS_AGENCY_URL ?? 'https://nexus-agency-formore.vercel.app'}/preview/${data.id}`
   return NextResponse.json({ previewUrl, viewed: data.viewed, viewCount: data.view_count ?? 0 })
 }
 
@@ -376,7 +380,7 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
-  const base = process.env.NEXUS_AGENCY_URL ?? 'https://nexus-agency-formore-cvufrmzih.vercel.app'
+  const base = process.env.NEXUS_AGENCY_URL ?? 'https://nexus-agency-formore.vercel.app'
   const previewUrl = `${base}/preview/${preview.id}`
 
   return NextResponse.json({ previewUrl, previewId: preview.id })
