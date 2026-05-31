@@ -287,7 +287,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       )}
 
       {/* Info card */}
-      <div className={`${card} p-5 grid grid-cols-2 gap-4`}>
+      <div className={`${card} p-5 grid grid-cols-2 gap-4 overflow-hidden`}>
         <div>
           <p className="text-xs text-slate-500 mb-1">Source</p>
           <p className="text-sm text-white font-medium">{lead.source === 'google_maps' ? 'Google Maps' : 'Reddit'}</p>
@@ -459,12 +459,12 @@ export default function LeadDetailClient({ id }: { id: string }) {
           </div>
           <div className="flex flex-col gap-2 w-full sm:flex-row sm:items-center sm:flex-wrap">
             {/* Tone picker */}
-            <div className="flex rounded-lg border border-white/10 overflow-hidden text-xs font-semibold w-full sm:w-auto">
+            <div className="flex flex-wrap gap-1.5 w-full sm:w-auto">
               {(['casual', 'professional', 'urgent', 'sms', 'instagram'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setOutreachTone(t)}
-                  className={`flex-1 sm:flex-none px-2.5 py-2 capitalize ${outreachTone === t ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize border ${outreachTone === t ? 'bg-white/10 border-white/20 text-white' : 'border-white/10 text-slate-500 hover:text-white'}`}
                   style={{ transition: 'background 0.15s, color 0.15s' }}
                 >{t}</button>
               ))}
@@ -509,15 +509,15 @@ export default function LeadDetailClient({ id }: { id: string }) {
         {/* Preview iframe thumbnail */}
         {previewUrl && (
           <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="block relative rounded-xl overflow-hidden border border-white/10 hover:border-[#0ea5e9]/40 group" style={{ transition: 'border-color 0.15s' }}>
-            <div style={{ height: 220, position: 'relative' }}>
+            <div style={{ height: 180, position: 'relative', overflow: 'hidden' }}>
               <iframe
                 src={previewUrl}
                 title="Preview"
                 scrolling="no"
-                style={{ width: '200%', height: '200%', transform: 'scale(0.5)', transformOrigin: 'top left', border: 'none', pointerEvents: 'none' }}
+                style={{ width: '200%', height: '200%', transform: 'scale(0.5)', transformOrigin: 'top left', border: 'none', pointerEvents: 'none', maxWidth: 'none' }}
               />
             </div>
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-xl" style={{ transition: 'opacity 0.15s' }}>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
               <span className="flex items-center gap-2 px-4 py-2 bg-[#0ea5e9] text-black text-xs font-bold rounded-lg">
                 <ExternalLink className="w-3.5 h-3.5" /> Open Full Preview
               </span>

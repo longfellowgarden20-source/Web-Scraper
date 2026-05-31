@@ -536,7 +536,7 @@ export default function LeadsClient() {
             {bulkGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
             {bulkGenerating ? 'Generating...' : 'Generate All Drafts'}
           </button>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-slate-400">Mark as:</span>
             {['contacted', 'replied', 'converted', 'passed'].map(s => (
               <button key={s} onClick={() => bulkUpdateStatus(s)} disabled={bulkUpdating}
