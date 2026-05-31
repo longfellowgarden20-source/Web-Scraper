@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const { data: existingPreviews } = await getSupabaseAdmin()
     .from('previews')
     .select('lead_id')
+    .limit(2000)
 
   const alreadyDone = new Set((existingPreviews ?? []).map((p: { lead_id: string }) => p.lead_id))
 
