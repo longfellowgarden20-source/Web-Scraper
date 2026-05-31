@@ -37,7 +37,6 @@ function lightenHex(hex: string, alpha = '10'): string {
 
 function buildColorPalette(accent: string) {
   const dark = darkenHex(accent)
-  // Very dark version for footer (darken twice)
   const footer = darkenHex(dark)
   return {
     accent,
@@ -46,8 +45,9 @@ function buildColorPalette(accent: string) {
     accentBorder: lightenHex(accent, '30'),
     accentFooter: footer,
     accentFooterBorder: dark,
-    accentFooterText: lightenHex(accent, '99'),
-    accentFooterHeading: lightenHex(accent, 'cc'),
+    // Always use light neutral text in footer — accent-tinted text on dark bg is unreadable
+    accentFooterText: '#94a3b8',
+    accentFooterHeading: '#f1f5f9',
   }
 }
 
