@@ -388,5 +388,15 @@ Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text
   const base = process.env.NEXUS_AGENCY_URL ?? 'https://nexus-agency-formore.vercel.app'
   const previewUrl = `${base}/preview/${preview.id}`
 
+  // Trigger screenshot asynchronously — don't block the response
+  const screenshotService = process.env.SCREENSHOT_SERVICE_URL
+  if (screenshotService) {
+    fetch(`${screenshotService}/screenshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preview_id: preview.id, preview_url: previewUrl }),
+    }).catch(() => {}) // fire and forget
+  }
+
   return NextResponse.json({ previewUrl, previewId: preview.id })
 }
