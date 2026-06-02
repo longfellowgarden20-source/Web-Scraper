@@ -609,6 +609,12 @@ export default function LeadsClient() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <a href={`/leads/${lead.id}`} className="font-medium text-white hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>{lead.business_name}</a>
+                            {lead.outreach_draft?.includes('nexus-agency') && (
+                              <span title="Site generated" className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
+                            )}
+                            {lead.called && (
+                              <span title="Called" className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                            )}
                             {isStale(lead.created_at, lead.status) && (
                               <span title="New lead — no action in 7+ days" className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
                             )}
@@ -709,6 +715,12 @@ export default function LeadsClient() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <a href={`/leads/${lead.id}`} className="font-semibold text-white text-sm hover:text-[#0ea5e9]" style={{ transition: 'color 0.15s' }}>{lead.business_name}</a>
+                          {lead.outreach_draft?.includes('nexus-agency') && (
+                            <span title="Site generated" className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />
+                          )}
+                          {lead.called && (
+                            <span title="Called" className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                          )}
                           {isStale(lead.created_at, lead.status) && (
                             <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-500/15 text-orange-400">Stale</span>
                           )}
