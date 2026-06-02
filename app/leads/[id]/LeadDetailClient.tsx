@@ -72,6 +72,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [previewColor, setPreviewColor] = useState('')
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
   const [screenshotCopied, setScreenshotCopied] = useState(false)
+  const [screenshotLoading, setScreenshotLoading] = useState(false)
   const [enriching, setEnriching] = useState(false)
 
   // Launch All state
@@ -593,19 +594,27 @@ export default function LeadDetailClient({ id }: { id: string }) {
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Attach this screenshot</p>
                 <button
+                  disabled={screenshotLoading}
                   onClick={async () => {
-                    const res = await fetch('/api/screenshot', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ leadId: id }),
-                    })
-                    const data = await res.json()
-                    if (data.screenshotUrl) setScreenshotUrl(data.screenshotUrl)
+                    setScreenshotLoading(true)
+                    try {
+                      const res = await fetch('/api/screenshot', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ leadId: id }),
+                      })
+                      const data = await res.json()
+                      if (data.screenshotUrl) setScreenshotUrl(data.screenshotUrl)
+                    } finally {
+                      setScreenshotLoading(false)
+                    }
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold border border-white/15 text-slate-400 hover:text-white hover:bg-white/8 active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold border border-white/15 text-slate-400 hover:text-white hover:bg-white/8 active:scale-[0.98] disabled:opacity-50"
                   style={{ minHeight: 44, transition: 'background 0.15s, color 0.15s, transform 0.1s' }}
                 >
-                  <Wand2 className="w-4 h-4" /> Capture Screenshot
+                  {screenshotLoading
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Capturing...</>
+                    : <><Wand2 className="w-4 h-4" /> Capture Screenshot</>}
                 </button>
               </div>
             ) : null}
