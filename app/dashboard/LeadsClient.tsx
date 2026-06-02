@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star, Download, Send, Wand2, Phone, LayoutGrid, List, Bell } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, Loader2, RefreshCw, Mail, Star, Download, Send, Wand2, Phone, LayoutGrid, List, Bell, Flame } from 'lucide-react'
 
 type Lead = {
   id: string
@@ -105,6 +105,20 @@ export default function LeadsClient() {
   const [showQueries, setShowQueries] = useState(false)
   const [followUpId, setFollowUpId] = useState<string | null>(null)
   const [followUpDate, setFollowUpDate] = useState('')
+  const [hotLeads, setHotLeads] = useState<{
+    previewId: string
+    leadId: string
+    viewCount: number
+    businessName: string
+    city: string
+    status: string
+    phone: string | null
+    email: string | null
+    instagram: string | null
+    score: number
+    called: boolean
+    hasMessage: boolean
+  }[]>([])
 
   const fetchQueries = useCallback(async () => {
     const res = await fetch('/api/scrape/queries')
@@ -163,6 +177,7 @@ export default function LeadsClient() {
 
   useEffect(() => {
     fetch('/api/leads/count').then(r => r.json()).then(d => { if (d.count != null) setTotalCount(d.count) })
+    fetch('/api/leads/hot').then(r => r.ok ? r.json() : []).then(d => { if (Array.isArray(d)) setHotLeads(d) })
   }, [])
 
   const setSort = (k: SortKey) => {
@@ -414,6 +429,52 @@ export default function LeadsClient() {
                   <p className="text-xs text-slate-500">{lead.city || '—'} · {lead.follow_up_date}</p>
                 </div>
                 <Link href={`/leads/${lead.id}`} className="px-2.5 py-1 text-xs text-[#0ea5e9] border border-[#0ea5e9]/30 rounded-lg hover:bg-[#0ea5e9]/10 shrink-0" style={{ transition: 'background 0.15s' }}>View</Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Hot Leads — opened your preview link */}
+      {hotLeads.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">Opened Your Link</h2>
+            <span className="text-xs text-slate-500">{hotLeads.length} lead{hotLeads.length > 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {hotLeads.map(lead => (
+              <div key={lead.leadId} className="flex items-center justify-between gap-3 px-4 py-3 bg-orange-500/5 border border-orange-500/20 rounded-xl">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-white truncate">{lead.businessName}</p>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold tabular-nums ${lead.viewCount >= 3 ? 'bg-orange-500/20 text-orange-400' : 'bg-yellow-500/15 text-yellow-400'}`}>
+                      {lead.viewCount} view{lead.viewCount > 1 ? 's' : ''}
+                    </span>
+                    {lead.called && <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" title="Called" />}
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                    <span>{lead.city || '—'}</span>
+                    {lead.phone && <span>{lead.phone}</span>}
+                    {lead.email && <span className="text-[#0ea5e9] truncate">{lead.email}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {lead.phone && (
+                    <a href={`tel:${lead.phone}`} className="p-1.5 rounded-lg text-green-400 hover:bg-green-500/10 border border-green-500/20" style={{ transition: 'background 0.15s' }} title="Call">
+                      <Phone className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  {lead.email && (
+                    <a href={gmailHref(lead.email)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-[#0ea5e9] hover:bg-[#0ea5e9]/10 border border-[#0ea5e9]/20" style={{ transition: 'background 0.15s' }} title="Email">
+                      <Mail className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  <Link href={`/leads/${lead.leadId}`} className="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/30 rounded-lg hover:bg-orange-500/10" style={{ transition: 'background 0.15s' }}>
+                    View
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
