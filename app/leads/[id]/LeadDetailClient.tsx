@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Copy, Check, ExternalLink, Wand2, AlertCircle, Send, Phone, Globe, Rocket } from 'lucide-react'
 
@@ -74,6 +74,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [screenshotCopied, setScreenshotCopied] = useState(false)
   const [screenshotLoading, setScreenshotLoading] = useState(false)
   const [enriching, setEnriching] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Launch All state
   const [launchLoading, setLaunchLoading] = useState(false)
@@ -109,27 +110,37 @@ export default function LeadDetailClient({ id }: { id: string }) {
         // If preview exists but no screenshot yet, start polling
         if (data?.previewUrl && !data?.screenshotUrl) {
           let attempts = 0
-          const poll = setInterval(async () => {
+          pollRef.current = setInterval(async () => {
             attempts++
             const r = await fetch(`/api/preview?leadId=${id}`)
             const d = await r.json()
             if (d?.screenshotUrl) {
               setScreenshotUrl(d.screenshotUrl)
-              clearInterval(poll)
+              clearInterval(pollRef.current!)
+              pollRef.current = null
             }
-            if (attempts >= 12) clearInterval(poll)
+            if (attempts >= 12) {
+              clearInterval(pollRef.current!)
+              pollRef.current = null
+            }
           }, 5000)
         }
       })
       .catch(() => {})
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
   }, [id])
 
   const enrichLead = async () => {
     if (!lead) return
     setEnriching(true)
-    const res = await fetch('/api/leads/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id }) })
-    const data = await res.json()
-    if (res.ok) setLead(l => l ? { ...l, email: data.email ?? l.email, instagram: data.instagram ?? l.instagram, facebook: data.facebook ?? l.facebook } : l)
+    try {
+      const res = await fetch('/api/leads/enrich', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: lead.id }) })
+      const data = await res.json()
+      if (res.ok) setLead(l => l ? { ...l, email: data.email ?? l.email, instagram: data.instagram ?? l.instagram, facebook: data.facebook ?? l.facebook } : l)
+    } catch { /* network failure — silently ignore */ }
     setEnriching(false)
   }
 
@@ -194,17 +205,21 @@ export default function LeadDetailClient({ id }: { id: string }) {
       setScreenshotUrl(null)
 
       // Poll for screenshot — Railway takes ~10s to capture it
-      const previewId = data.previewId
+      if (pollRef.current) clearInterval(pollRef.current)
       let attempts = 0
-      const poll = setInterval(async () => {
+      pollRef.current = setInterval(async () => {
         attempts++
         const r = await fetch(`/api/preview?leadId=${id}`)
         const d = await r.json()
         if (d?.screenshotUrl) {
           setScreenshotUrl(d.screenshotUrl)
-          clearInterval(poll)
+          clearInterval(pollRef.current!)
+          pollRef.current = null
         }
-        if (attempts >= 12) clearInterval(poll) // stop after ~60s
+        if (attempts >= 12) {
+          clearInterval(pollRef.current!)
+          pollRef.current = null
+        }
       }, 5000)
     } catch (e: unknown) {
       setPreviewError(e instanceof Error ? e.message : 'Unknown error')
@@ -604,7 +619,13 @@ export default function LeadDetailClient({ id }: { id: string }) {
                         body: JSON.stringify({ leadId: id }),
                       })
                       const data = await res.json()
-                      if (data.screenshotUrl) setScreenshotUrl(data.screenshotUrl)
+                      if (res.ok && data.screenshotUrl) {
+                        setScreenshotUrl(data.screenshotUrl)
+                      } else {
+                        setLaunchError(data.error ?? 'Screenshot capture failed')
+                      }
+                    } catch {
+                      setLaunchError('Screenshot service unreachable')
                     } finally {
                       setScreenshotLoading(false)
                     }

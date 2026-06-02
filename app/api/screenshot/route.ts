@@ -23,14 +23,23 @@ export async function POST(req: NextRequest) {
 
   if (!screenshotService) return NextResponse.json({ error: 'Screenshot service not configured' }, { status: 500 })
 
-  const res = await fetch(`${screenshotService}/screenshot`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ preview_id: preview.id, preview_url: previewUrl }),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${screenshotService}/screenshot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preview_id: preview.id, preview_url: previewUrl }),
+    })
+  } catch {
+    return NextResponse.json({ error: 'Screenshot service unreachable' }, { status: 502 })
+  }
 
-  if (!res.ok) return NextResponse.json({ error: 'Screenshot service failed' }, { status: 500 })
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    return NextResponse.json({ error: `Screenshot service failed: ${errText.slice(0, 100)}` }, { status: 502 })
+  }
 
   const data = await res.json()
+  if (!data.screenshot_url) return NextResponse.json({ error: 'Screenshot service returned no URL' }, { status: 500 })
   return NextResponse.json({ screenshotUrl: data.screenshot_url })
 }
