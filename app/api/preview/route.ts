@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
 
   const { data } = await getSupabaseAdmin()
     .from('previews')
-    .select('id, viewed, view_count')
+    .select('id, viewed, view_count, screenshot_url')
     .eq('lead_id', leadId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -106,7 +106,12 @@ export async function GET(req: NextRequest) {
   if (!data) return NextResponse.json(null)
 
   const previewUrl = `${process.env.NEXUS_AGENCY_URL ?? 'https://nexus-agency-formore.vercel.app'}/preview/${data.id}`
-  return NextResponse.json({ previewUrl, viewed: data.viewed, viewCount: data.view_count ?? 0 })
+  return NextResponse.json({
+    previewUrl,
+    viewed: data.viewed,
+    viewCount: data.view_count ?? 0,
+    screenshotUrl: data.screenshot_url ?? null,
+  })
 }
 
 export async function POST(req: NextRequest) {

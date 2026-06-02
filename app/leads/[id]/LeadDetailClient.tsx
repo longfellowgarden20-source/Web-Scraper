@@ -70,6 +70,8 @@ export default function LeadDetailClient({ id }: { id: string }) {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [previewViews, setPreviewViews] = useState<number | null>(null)
   const [previewColor, setPreviewColor] = useState('')
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
+  const [screenshotCopied, setScreenshotCopied] = useState(false)
   const [enriching, setEnriching] = useState(false)
 
   // Launch All state
@@ -100,6 +102,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       .then(data => {
         if (data?.previewUrl) setPreviewUrl(data.previewUrl)
         if (data?.viewCount != null) setPreviewViews(data.viewCount)
+        if (data?.screenshotUrl) setScreenshotUrl(data.screenshotUrl)
       })
       .catch(() => {})
   }, [id])
@@ -171,6 +174,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
       setPreviewUrl(data.previewUrl)
       setPreviewViews(0)
+      setScreenshotUrl(null) // reset — screenshot worker will fill it shortly
     } catch (e: unknown) {
       setPreviewError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
@@ -532,6 +536,25 @@ export default function LeadDetailClient({ id }: { id: string }) {
             <div className="p-4 bg-black/30 border border-white/10 rounded-xl text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">
               {launchMessage}
             </div>
+            {/* Screenshot to attach */}
+            {screenshotUrl ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Attach this screenshot</p>
+                <a href={screenshotUrl} target="_blank" rel="noopener noreferrer">
+                  <img src={screenshotUrl} alt="Preview screenshot" className="w-full rounded-xl border border-white/10 hover:border-[#0ea5e9]/40" style={{ transition: 'border-color 0.15s' }} />
+                </a>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(screenshotUrl); setScreenshotCopied(true); setTimeout(() => setScreenshotCopied(false), 2000) }}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold border border-white/15 text-white hover:bg-white/8 active:scale-[0.98]"
+                  style={{ minHeight: 44, transition: 'background 0.15s, transform 0.1s' }}
+                >
+                  {screenshotCopied ? <><Check className="w-4 h-4 text-green-400" /> Copied image URL!</> : <><Copy className="w-4 h-4" /> Copy Screenshot URL</>}
+                </button>
+              </div>
+            ) : previewUrl ? (
+              <p className="text-xs text-slate-500 italic">Screenshot generating — run <code className="text-slate-300">python3 scripts/screenshot.py</code> to capture it.</p>
+            ) : null}
+
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => { navigator.clipboard.writeText(launchMessage); setLaunchCopied(true); setTimeout(() => setLaunchCopied(false), 2000) }}
