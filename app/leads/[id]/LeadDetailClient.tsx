@@ -92,6 +92,7 @@ export default function LeadDetailClient({ id }: { id: string }) {
         setLead(data)
         setNotes(data.notes ?? '')
         setStatus(data.status ?? 'new')
+        if (data.outreach_draft) setLaunchMessage(data.outreach_draft)
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -103,6 +104,21 @@ export default function LeadDetailClient({ id }: { id: string }) {
         if (data?.previewUrl) setPreviewUrl(data.previewUrl)
         if (data?.viewCount != null) setPreviewViews(data.viewCount)
         if (data?.screenshotUrl) setScreenshotUrl(data.screenshotUrl)
+
+        // If preview exists but no screenshot yet, start polling
+        if (data?.previewUrl && !data?.screenshotUrl) {
+          let attempts = 0
+          const poll = setInterval(async () => {
+            attempts++
+            const r = await fetch(`/api/preview?leadId=${id}`)
+            const d = await r.json()
+            if (d?.screenshotUrl) {
+              setScreenshotUrl(d.screenshotUrl)
+              clearInterval(poll)
+            }
+            if (attempts >= 12) clearInterval(poll)
+          }, 5000)
+        }
       })
       .catch(() => {})
   }, [id])
@@ -174,7 +190,21 @@ export default function LeadDetailClient({ id }: { id: string }) {
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
       setPreviewUrl(data.previewUrl)
       setPreviewViews(0)
-      setScreenshotUrl(null) // reset — screenshot worker will fill it shortly
+      setScreenshotUrl(null)
+
+      // Poll for screenshot — Railway takes ~10s to capture it
+      const previewId = data.previewId
+      let attempts = 0
+      const poll = setInterval(async () => {
+        attempts++
+        const r = await fetch(`/api/preview?leadId=${id}`)
+        const d = await r.json()
+        if (d?.screenshotUrl) {
+          setScreenshotUrl(d.screenshotUrl)
+          clearInterval(poll)
+        }
+        if (attempts >= 12) clearInterval(poll) // stop after ~60s
+      }, 5000)
     } catch (e: unknown) {
       setPreviewError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
@@ -223,6 +253,14 @@ export default function LeadDetailClient({ id }: { id: string }) {
       // Step 3 — assemble final message: Groq draft + preview link
       const message = `${draft}\n\nCheck out the site I built for you: ${url}`
       setLaunchMessage(message)
+
+      // Save the full assembled message to DB so it persists on refresh
+      await fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, outreach_draft: message }),
+      })
+
       setLaunchStep(null)
     } catch (e: unknown) {
       setLaunchError(e instanceof Error ? e.message : 'Unknown error')
