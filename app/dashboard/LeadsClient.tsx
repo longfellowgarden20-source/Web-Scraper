@@ -105,6 +105,7 @@ export default function LeadsClient() {
   const [showQueries, setShowQueries] = useState(false)
   const [followUpId, setFollowUpId] = useState<string | null>(null)
   const [followUpDate, setFollowUpDate] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [hotLeads, setHotLeads] = useState<{
     previewId: string
     leadId: string
@@ -185,10 +186,13 @@ export default function LeadsClient() {
     else { setSortKey(k); setSortDir('desc') }
   }
 
+  const uniqueCategories = [...new Set(leads.map(l => l.category?.toLowerCase().split(' ')[0]).filter(Boolean))].sort() as string[]
+
   const filtered = leads
     .filter(l => scoreFilter === 'all' ? true : scoreFilter === 'high' ? l.score >= 8 : scoreFilter === 'mid' ? l.score >= 5 && l.score < 8 : l.score < 5)
     .filter(l => noWebsiteFilter ? !l.website : true)
     .filter(l => score10Filter ? l.score === 10 : true)
+    .filter(l => categoryFilter === 'all' ? true : l.category?.toLowerCase().startsWith(categoryFilter))
 
   const sorted = [...filtered].sort((a, b) => {
     const mul = sortDir === 'asc' ? 1 : -1
@@ -557,7 +561,7 @@ export default function LeadsClient() {
             style={{ fontSize: 16 }}
           />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`${select} w-full`}>
             {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
           </select>
@@ -569,6 +573,12 @@ export default function LeadsClient() {
             <option value="high">High (8–10)</option>
             <option value="mid">Mid (5–7)</option>
             <option value="low">Low (1–4)</option>
+          </select>
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className={`${select} w-full`}>
+            <option value="all">All categories</option>
+            {uniqueCategories.map(c => (
+              <option key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+            ))}
           </select>
         </div>
         <div className="flex gap-2">
