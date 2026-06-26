@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 
+export const runtime = 'edge'
+
 export const dynamic = 'force-dynamic'
 
 const MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY!

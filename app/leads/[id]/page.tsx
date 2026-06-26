@@ -1,6 +1,8 @@
 import DashboardLayout from '@/app/components/DashboardLayout'
 import LeadDetailClient from './LeadDetailClient'
 
+export const runtime = 'edge'
+
 export const metadata = { title: 'Lead Detail — Fast Websites' }
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {

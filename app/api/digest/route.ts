@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { transporter } from '@/lib/mailer'
 
+export const runtime = 'edge'
+
 export const dynamic = 'force-dynamic'
 
 export async function POST() {
