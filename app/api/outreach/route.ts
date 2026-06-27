@@ -34,28 +34,31 @@ export async function POST(req: NextRequest) {
     instagram: '2 sentences, casual DM, real person tone, soft question at end. No sign-off.',
   }
 
-  const prompt = `Write cold outreach for Fast Websites (fastwebsitesagency.com). Business: ${lead.business_name}, ${lead.city ?? 'CA'}, ${lead.category ?? 'local business'}. ${websiteInfo} ${reviewInfo} Tone: ${toneGuide[tone] ?? toneGuide.professional} No generic filler. No score numbers.`
+  const name = lead.business_name
+  const city = lead.city ?? ''
+  const reviews = lead.google_review_count
+  const rating = lead.google_rating
+  const hasWebsite = !!lead.website
 
-  const groqKeys = [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2, process.env.GROQ_API_KEY_3].filter(Boolean) as string[]
-  let draft = ''
-  for (const key of groqKeys) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          max_tokens: 300,
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-      const data = await res.json()
-      if (data?.error?.code === 'rate_limit_exceeded') continue
-      const content = data.choices?.[0]?.message?.content?.trim()
-      if (content) { draft = content; break }
-    } catch { continue }
+  const reviewLine = reviews && rating
+    ? `I noticed you have ${reviews} Google reviews and a ${rating} star rating`
+    : `I came across ${name} on Google Maps`
+
+  const websiteLine = hasWebsite
+    ? `but your website could use some work to really convert visitors into customers`
+    : `but not having a website makes it hard to reach people who aren't searching directly on Google`
+
+  const cityLine = city ? ` in ${city}` : ''
+
+  const templates: Record<string, string> = {
+    casual: `Hey ${name} — ${reviewLine}${cityLine}, ${websiteLine}. Would you be open to a simple, fast website that brings in more calls? I already built a free preview for you — check it out.`,
+    professional: `Hi ${name}, ${reviewLine}${cityLine}, ${websiteLine}. At Fast Websites we build clean, fast sites for local businesses starting at $500 — I already put together a free preview for you. Worth a look?`,
+    urgent: `${name} — you're losing customers right now because ${hasWebsite ? 'your site isn\'t converting' : 'you have no website'}. ${reviewLine}${cityLine} — that reputation deserves a site to match. I built a free preview, takes 30 seconds to check out.`,
+    sms: `Hey, saw ${name}${cityLine} on Google — ${hasWebsite ? 'your site could use some work' : 'you don\'t have a website'}. Built you a free preview, want to see it?`,
+    instagram: `Hey! Love what ${name} is doing${cityLine} — ${hasWebsite ? 'your website could use a refresh though' : 'you should really have a website though'}. Built you a free preview 👀 want to see it?`,
   }
-  if (!draft) return NextResponse.json({ error: 'All Groq keys rate limited or failed' }, { status: 500 })
+
+  const draft = templates[tone] ?? templates.professional
 
   await getSupabaseAdmin().from('leads').update({ outreach_draft: draft }).eq('id', id)
 
