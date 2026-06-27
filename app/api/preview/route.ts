@@ -33,25 +33,27 @@ function ensureContrastOnWhite(hex: string): string {
   return current
 }
 
-function lightenHex(hex: string, alpha = '10'): string {
-  return `${hex}${alpha}`
+function mixHex(hex: string, target: string, amount: number): string {
+  const r1 = parseInt(hex.slice(1, 3), 16), g1 = parseInt(hex.slice(3, 5), 16), b1 = parseInt(hex.slice(5, 7), 16)
+  const r2 = parseInt(target.slice(1, 3), 16), g2 = parseInt(target.slice(3, 5), 16), b2 = parseInt(target.slice(5, 7), 16)
+  const r = Math.round(r1 + (r2 - r1) * amount).toString(16).padStart(2, '0')
+  const g = Math.round(g1 + (g2 - g1) * amount).toString(16).padStart(2, '0')
+  const b = Math.round(b1 + (b2 - b1) * amount).toString(16).padStart(2, '0')
+  return `#${r}${g}${b}`
 }
 
 function buildColorPalette(accent: string) {
-  const dark = darkenHex(accent)
-  const footer = darkenHex(dark)
-  // Check luminance — dark accents need more alpha to stay visible as tints
-  const lum = luminance(accent)
-  const lightAlpha = lum < 0.15 ? '20' : '12' // more opaque tint for very dark colors
-  const borderAlpha = lum < 0.15 ? '50' : '30' // more visible border for very dark colors
+  const dark = darkenHex(accent)           // ~78% — hover state
+  const darker = darkenHex(dark)           // ~60% — footer bg
+  const light = mixHex(accent, '#ffffff', 0.88)   // very light tint for section bg
+  const border = mixHex(accent, '#ffffff', 0.60)  // light but visible border
   return {
     accent,
     accentDark: dark,
-    accentLight: lightenHex(accent, lightAlpha),
-    accentBorder: lightenHex(accent, borderAlpha),
-    accentFooter: footer,
+    accentLight: light,
+    accentBorder: border,
+    accentFooter: darker,
     accentFooterBorder: dark,
-    // Always use light neutral text in footer — accent-tinted text on dark bg is unreadable
     accentFooterText: '#94a3b8',
     accentFooterHeading: '#f1f5f9',
   }
@@ -151,7 +153,7 @@ Business details:
 
 Return ONLY valid JSON matching this EXACT structure (no markdown, no extra text, no trailing commas):
 {
-  "accentHex": "A single hex color (#rrggbb) that fits this industry and looks great as a brand color. Must have contrast ratio ≥ 4.5:1 against white (#ffffff) so text remains readable. Examples by industry: landscaping=#16a34a, plumbing=#1d4ed8, electrical=#b45309, cleaning=#0284c7, roofing=#92400e, salon=#9333ea, gym=#ea580c, dental=#0891b2, restaurant=#dc2626, pet grooming=#92400e. Pick something fitting but feel free to vary the exact shade — avoid pure #000000 or #ffffff.",
+  "accentHex": "A bold, saturated hex color (#rrggbb) that fits this industry. Must have contrast ratio ≥ 4.5:1 against white. Aim for deep, rich tones — NOT washed-out pastels or flat mid-tones. Strong examples by industry: landscaping=#15803d, plumbing=#1e40af, electrical=#92400e, cleaning=#0369a1, roofing=#7c2d12, salon=#7e22ce, gym=#c2410c, dental=#0e7490, restaurant=#b91c1c, pet grooming=#854d0e, painting=#b45309, hvac=#1d4ed8, concrete=#374151, tree service=#14532d, pool=#0c4a6e, auto=#991b1b. Choose the most fitting industry and pick a shade that feels premium and confident — slightly darker than you think, never pale.",
   "shortName": "2-3 word short business name for nav/footer",
   "tagline": "one catchy sentence tagline mentioning the city, 10-16 words",
   "industry": "${category.toLowerCase().split(' ')[0]}",
